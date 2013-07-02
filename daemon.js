@@ -53,7 +53,7 @@ function findUrls (text) {
       urlArray = [],
       matchArray,
       regexToken = /(((https?):\/\/)[\-\w@:%_\+.~#?,&\/\/=]+)/g;
-  
+
   while( (matchArray = regexToken.exec( source )) !== null ){
     var url = matchArray[0];
     urlArray.push( url );
@@ -128,11 +128,7 @@ function parse_dm_blob (data){
     tmpQueue["sender_id"]  = sender_id;
     tmpQueue["sender"]     = data["direct_message"]["sender"]["screen_name"];
     tmpQueue["created_at"] = data["direct_message"]["created_at"];
-    tmpQueue["urls"] = [];
-
-    _.each(findUrls(data["direct_message"]["text"]), function(url){
-      tmpQueue["urls"].push(url)
-    });
+    tmpQueue.urls = findUrls(data.direct_message.text);
 
     tweetQueue[message_id] = tmpQueue;
 
