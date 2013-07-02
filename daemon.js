@@ -1,8 +1,8 @@
-var _ = require('underscore'), 
-    twitter = require('twitter'),
-    Stream = require('user-stream'),
-    OAuth = require('oauth').OAuth,
-    config = require('./config.json'), // See config-sample.json
+var _ = require("underscore"), 
+    twitter = require("twitter"),
+    Stream = require("user-stream"),
+    OAuth = require("oauth").OAuth,
+    config = require("./config.json"), // See config-sample.json
     friends = [], 
     tweetQueue = {},
     env_config = "prod";
@@ -24,7 +24,7 @@ var Twit = new twitter ({
     consumer_secret: config.consumer_secret,
     access_token_key: config.oauth_token,
     access_token_secret: config.oauth_secret,
-    rest_base: 'https://api.twitter.com/1.1'
+    rest_base: "https://api.twitter.com/1.1"
 });
 
 function Tweet (status) {
@@ -49,7 +49,7 @@ function DM (user_id, text) {
 }
 
 function findUrls (text) {
-  var source = (text || '').toString(),
+  var source = (text || "").toString(),
       urlArray = [],
       matchArray,
       regexToken = /(((https?):\/\/)[\-\w@:%_\+.~#?,&\/\/=]+)/g;
@@ -130,7 +130,7 @@ function parse_dm_blob (data){
     tmpQueue["created_at"] = data["direct_message"]["created_at"];
     tmpQueue["urls"] = [];
 
-    _.each(findUrls(data["direct_message"]["text"]), function(url, index){
+    _.each(findUrls(data["direct_message"]["text"]), function(url){
       tmpQueue["urls"].push(url)
     });
 
@@ -162,7 +162,7 @@ var userStream = new Stream({
 
 userStream.stream();
 
-userStream.on('connected', function(data) {
+userStream.on("connected", function(data) {
   console.log("Listening to " + config.screen_name)
   DM(parseInt(config.admin_id), "Listening to " + config.screen_name);
 });
@@ -171,7 +171,7 @@ function stringIt(v){
   return v.toString();
 }
 
-userStream.on('data', function(data) {
+userStream.on("data", function(data) {
   if (data["warning"]){
     console.log("WARNING");
     DM(parseInt(config.admin_id), " WARNING: [" + data["code"] + "] " + data["message"]);
@@ -189,25 +189,25 @@ userStream.on('data', function(data) {
   // console.log(data);
 });
 
-userStream.on('error', function(error) {
+userStream.on("error", function(error) {
   console.log("ERROR!");
   console.log(error);
   DM(parseInt(config.admin_id), "ERROR");
 });
 
-userStream.on('close', function(error) {
+userStream.on("close", function(error) {
   console.log(error);
   console.log("Reconnecting")
   DM(parseInt(config.admin_id), "Reconnecting");
   userStream.stream();
 });
 
-userStream.on('heartbeat', function(){
-    console.log('--v^v---');
+userStream.on("heartbeat", function(){
+    console.log("--v^v---");
 });
 
-userStream.on('garbage', function(data){
-    console.log('Can\'t be formatted:');
+userStream.on("garbage", function(data){
+    console.log("Can't be formatted:");
     console.log(data);
 });
 
