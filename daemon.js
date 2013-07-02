@@ -1,10 +1,10 @@
 var twitter = require("twitter"),
-    Stream = require("user-stream"),
-    OAuth = require("oauth").OAuth,
-    config = require("./config.json"), // See config-sample.json
-    friends = [], 
-    tweetQueue = {},
-    env_config = "prod";
+  Stream = require("user-stream"),
+  OAuth = require("oauth").OAuth,
+  config = require("./config.json"), // See config-sample.json
+  friends = [],
+  tweetQueue = {},
+  env_config = "prod";
 
 config = config[env_config];
 
@@ -19,11 +19,11 @@ var twoauth = new OAuth(
 );
 
 var Twit = new twitter ({
-    consumer_key: config.consumer_key,
-    consumer_secret: config.consumer_secret,
-    access_token_key: config.oauth_token,
-    access_token_secret: config.oauth_secret,
-    rest_base: "https://api.twitter.com/1.1"
+  consumer_key: config.consumer_key,
+  consumer_secret: config.consumer_secret,
+  access_token_key: config.oauth_token,
+  access_token_secret: config.oauth_secret,
+  rest_base: "https://api.twitter.com/1.1"
 });
 
 function Tweet (status) {
@@ -49,9 +49,9 @@ function DM (user_id, text) {
 
 function findUrls (text) {
   var source = (text || "").toString(),
-      urlArray = [],
-      matchArray,
-      regexToken = /(((https?):\/\/)[\-\w@:%_\+.~#?,&\/\/=]+)/g;
+    urlArray = [],
+    matchArray,
+    regexToken = /(((https?):\/\/)[\-\w@:%_\+.~#?,&\/\/=]+)/g;
 
   while( (matchArray = regexToken.exec( source )) !== null ){
     var url = matchArray[0];
@@ -85,7 +85,7 @@ function handle_event (event, data){
 function handle_queue (id) {
  //TODO: Finish this
   var messageTimer, 
-      tweetTimer;
+    tweetTimer;
 
   clearTimeout(messageTimer);
 
@@ -116,8 +116,8 @@ function handle_queue (id) {
 
 function parse_dm_blob (data){
   var message_id = data.direct_message.id_str,
-      sender_id  = data.direct_message.sender.id_str,
-      screen_name  = data.direct_message.sender.screen_name;
+    sender_id  = data.direct_message.sender.id_str,
+    screen_name  = data.direct_message.sender.screen_name;
 
   console.log("DM from @" + screen_name + " " + sender_id);
 
@@ -200,11 +200,11 @@ userStream.on("close", function(error) {
 });
 
 userStream.on("heartbeat", function(){
-    console.log("--v^v---");
+  console.log("--v^v---");
 });
 
 userStream.on("garbage", function(data){
-    console.log("Can't be formatted:");
-    console.log(data);
+  console.log("Can't be formatted:");
+  console.log(data);
 });
 
