@@ -10,9 +10,9 @@
     }
   ],
   "dependencies": {
-    "underscore": "1.4.4",
     "user-stream": "0.0.5",
     "twitter": "0.1.18",
     "oauth": "0.9.10"
   }
 }
+
