@@ -81,38 +81,6 @@ function handle_event (event, data){
   }
 }
 
-function handle_queue (id) {
- //TODO: Finish this
-  var messageTimer, 
-      tweetTimer;
-
-  clearTimeout(messageTimer);
-
-  if (_.keys(tweetQueue).length){
-    var message_id = _.keys(tweetQueue)[0];
-
-    function tweet_links() {
-      console.log("exec tweet_links");
-      clearTimeout(tweetTimer);
-      if (tweetQueue[message_id].urls.length) {
-        var tweetURL = tweetQueue[message_id].urls.pop();
-        console.log(tweetURL);
-        Tweet(tweetURL);
-        tweetQueue[message_id].urls.length;
-        messageTimer = setTimeout(function(){tweet_links()}, 15000);
-      }else{
-        delete tweetQueue[message_id];
-      }
-    }
-
-    tweet_links();
-
-    if (_.keys(tweetQueue).length) {
-      messageTimer = setTimeout(handle_queue, 15000);
-    }
-  }
-}
-
 function parse_dm_blob (data){
   var message_id = data.direct_message.id_str,
       sender_id  = data.direct_message.sender.id_str,
