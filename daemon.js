@@ -1,5 +1,4 @@
-var _ = require("underscore"), 
-    twitter = require("twitter"),
+var twitter = require("twitter"),
     Stream = require("user-stream"),
     OAuth = require("oauth").OAuth,
     config = require("./config.json"), // See config-sample.json
@@ -75,7 +74,9 @@ function handle_event (event, data){
     console.log("Unfollow event: " + data.source.id_str + " => " + data.target.id_str);
       if (data.source.id_str === config.user_id) {
         console.log("Removed @" + data.target.screen_name + " from friends.")
-        friends = _.without(friends, data.target.id_str);
+        friends = friends.filter(function (friend) {
+          return friend !== data.target.id_str;
+        });
       }
     break;
   }
@@ -88,13 +89,13 @@ function handle_queue (id) {
 
   clearTimeout(messageTimer);
 
-  if (_.keys(tweetQueue).length){
-    var message_id = _.keys(tweetQueue)[0];
+  if (Object.keys(tweetQueue).length > 0) {
+    var message_id = Object.keys(tweetQueue)[0];
 
     function tweet_links() {
       console.log("exec tweet_links");
       clearTimeout(tweetTimer);
-      if (tweetQueue[message_id].urls.length) {
+      if (tweetQueue[message_id].urls.length > 0) {
         var tweetURL = tweetQueue[message_id].urls.pop();
         console.log(tweetURL);
         Tweet(tweetURL);
@@ -107,7 +108,7 @@ function handle_queue (id) {
 
     tweet_links();
 
-    if (_.keys(tweetQueue).length) {
+    if (Object.keys(tweetQueue).length > 0) {
       messageTimer = setTimeout(handle_queue, 15000);
     }
   }
@@ -120,7 +121,7 @@ function parse_dm_blob (data){
 
   console.log("DM from @" + screen_name + " " + sender_id);
 
-  if (_.contains(friends,sender_id)){
+  if (friends.indexOf(sender_id) > -1) {
 
     var tmpQueue = {};
 
@@ -134,7 +135,7 @@ function parse_dm_blob (data){
     if (tweetQueue[message_id]){
       if (tweetQueue[message_id].urls.length > 1){
         DM(parseInt(sender_id), "Received " + tweetQueue[message_id].urls.length + " links");
-        _.each(tweetQueue[message_id].urls, function(url, index){
+        tweetQueue[message_id].urls.forEach(function (url) {
           Tweet(url);
         });
       }else{
