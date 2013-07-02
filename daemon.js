@@ -1,11 +1,10 @@
-var _ = require("underscore"), 
-    twitter = require("twitter"),
-    Stream = require("user-stream"),
-    OAuth = require("oauth").OAuth,
-    config = require("./config.json"), // See config-sample.json
-    friends = [], 
-    tweetQueue = {},
-    env_config = "prod";
+var twitter = require("twitter"),
+  Stream = require("user-stream"),
+  OAuth = require("oauth").OAuth,
+  config = require("./config.json"), // See config-sample.json
+  friends = [],
+  tweetQueue = {},
+  env_config = "prod";
 
 config = config[env_config];
 
@@ -20,11 +19,11 @@ var twoauth = new OAuth(
 );
 
 var Twit = new twitter ({
-    consumer_key: config.consumer_key,
-    consumer_secret: config.consumer_secret,
-    access_token_key: config.oauth_token,
-    access_token_secret: config.oauth_secret,
-    rest_base: "https://api.twitter.com/1.1"
+  consumer_key: config.consumer_key,
+  consumer_secret: config.consumer_secret,
+  access_token_key: config.oauth_token,
+  access_token_secret: config.oauth_secret,
+  rest_base: "https://api.twitter.com/1.1"
 });
 
 function Tweet (status) {
@@ -50,9 +49,9 @@ function DM (user_id, text) {
 
 function findUrls (text) {
   var source = (text || "").toString(),
-      urlArray = [],
-      matchArray,
-      regexToken = /(((https?):\/\/)[\-\w@:%_\+.~#?,&\/\/=]+)/g;
+    urlArray = [],
+    matchArray,
+    regexToken = /(((https?):\/\/)[\-\w@:%_\+.~#?,&\/\/=]+)/g;
 
   while( (matchArray = regexToken.exec( source )) !== null ){
     var url = matchArray[0];
@@ -75,7 +74,9 @@ function handle_event (event, data){
     console.log("Unfollow event: " + data.source.id_str + " => " + data.target.id_str);
       if (data.source.id_str === config.user_id) {
         console.log("Removed @" + data.target.screen_name + " from friends.")
-        friends = _.without(friends, data.target.id_str);
+        friends = friends.filter(function (friend) {
+          return friend !== data.target.id_str;
+        });
       }
     break;
   }
@@ -83,26 +84,27 @@ function handle_event (event, data){
 
 function parse_dm_blob (data){
   var message_id = data.direct_message.id_str,
-      sender_id  = data.direct_message.sender.id_str,
-      screen_name  = data.direct_message.sender.screen_name;
+    sender_id  = data.direct_message.sender.id_str,
+    screen_name  = data.direct_message.sender.screen_name;
 
   console.log("DM from @" + screen_name + " " + sender_id);
 
-  if (_.contains(friends,sender_id)){
+  if (friends.indexOf(sender_id) > -1) {
 
-    var tmpQueue = {};
+    var tmpQueue = {
+      message_id: message_id
+      sender_id: sender_id
+      sender: data.direct_message.sender.screen_name
+      created_at: data.direct_message.created_at
+      urls: findUrls(data.direct_message.text)
+    };
 
-    tmpQueue.message_id = message_id;
-    tmpQueue.sender_id = sender_id;
-    tmpQueue.sender = data.direct_message.sender.screen_name;
-    tmpQueue.created_at = data.direct_message.created_at;
-    tmpQueue.urls = findUrls(data.direct_message.text);
     tweetQueue[message_id] = tmpQueue;
 
     if (tweetQueue[message_id]){
       if (tweetQueue[message_id].urls.length > 1){
         DM(parseInt(sender_id), "Received " + tweetQueue[message_id].urls.length + " links");
-        _.each(tweetQueue[message_id].urls, function(url, index){
+        tweetQueue[message_id].urls.forEach(function (url) {
           Tweet(url);
         });
       }else{
@@ -166,11 +168,11 @@ userStream.on("close", function(error) {
 });
 
 userStream.on("heartbeat", function(){
-    console.log("--v^v---");
+  console.log("--v^v---");
 });
 
 userStream.on("garbage", function(data){
-    console.log("Can't be formatted:");
-    console.log(data);
+  console.log("Can't be formatted:");
+  console.log(data);
 });
 
