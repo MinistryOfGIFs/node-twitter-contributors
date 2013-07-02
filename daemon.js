@@ -92,10 +92,10 @@ function parse_dm_blob (data){
   if (friends.indexOf(sender_id) > -1) {
 
     var tmpQueue = {
-      message_id: message_id
-      sender_id: sender_id
-      sender: data.direct_message.sender.screen_name
-      created_at: data.direct_message.created_at
+      message_id: message_id,
+      sender_id: sender_id,
+      sender: data.direct_message.sender.screen_name,
+      created_at: data.direct_message.created_at,
       urls: findUrls(data.direct_message.text)
     };
 
