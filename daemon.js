@@ -123,13 +123,14 @@ function parse_dm_blob (data){
 
   if (friends.indexOf(sender_id) > -1) {
 
-    var tmpQueue = {};
+    var tmpQueue = {
+      message_id: message_id
+      sender_id: sender_id
+      sender: data.direct_message.sender.screen_name
+      created_at: data.direct_message.created_at
+      urls: findUrls(data.direct_message.text)
+    };
 
-    tmpQueue.message_id = message_id;
-    tmpQueue.sender_id = sender_id;
-    tmpQueue.sender = data.direct_message.sender.screen_name;
-    tmpQueue.created_at = data.direct_message.created_at;
-    tmpQueue.urls = findUrls(data.direct_message.text);
     tweetQueue[message_id] = tmpQueue;
 
     if (tweetQueue[message_id]){
