@@ -1,0 +1,20 @@
+{
+  "prod": {
+    "screen_name": "@username",
+    "user_id": "<id of the account to share>",
+    "admin_id": "<id of the account that will receive errors in production>",
+    "consumer_key": "XXX",
+    "consumer_secret": "XXX",
+    "oauth_token": "XXX",
+    "oauth_secret": "XXX"
+  },
+  "dev": {
+    "screen_name": "@username_dev",
+    "user_id": "<id of the account to share>",
+    "admin_id": "<id of the account that will receive errors during development>",
+    "consumer_key": "XXX",
+    "consumer_secret": "XXX",
+    "oauth_token": "XXX",
+    "oauth_secret": "XXX"
+  }
+}
