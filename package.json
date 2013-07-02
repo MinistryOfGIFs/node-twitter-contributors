@@ -1,0 +1,18 @@
+{
+  "name": "gifs-daemon",
+  "version": "0.0.1",
+  "author": "Roach",
+  "description": "It takes the GIFs from the basket...",
+  "contributors": [ 
+    {
+      "name": "Roach",
+      "twitter": "@roach"
+    }
+  ],
+  "dependencies": {
+    "underscore": "1.4.4",
+    "user-stream": "0.0.5",
+    "twitter": "0.1.18",
+    "oauth": "0.9.10"
+  }
+}
