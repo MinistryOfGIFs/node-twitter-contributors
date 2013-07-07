@@ -1,12 +1,33 @@
 var twitter = require("twitter"),
   Stream = require("user-stream"),
   OAuth = require("oauth").OAuth,
+  fs = require('fs'),
   config = require("./config.json"), // See config-sample.json
-  friends = [],
+  friends = [], // Users this account follows
   tweetQueue = {},
-  env_config = "prod";
+  environment = "dev", // 'dev' for development or 'prod' for production
+  show_heartbeat = true, // logs '--^v--' to stdout only
+  logfile = "log.txt"; // name of the file you want log messages to output to
 
-config = config[env_config];
+config = config[environment];
+
+function pad (n) {
+  return n < 10 ? '0' + n.toString(10) : n.toString(10);
+};
+
+function timestamp () {
+  var d = new Date();
+  var time = [pad(d.getHours()), pad(d.getMinutes()), pad(d.getSeconds())].join(':');
+  return [pad(d.getDate()), pad(d.getMonth()), time].join(' ');
+}
+
+function log (message){
+  var message = timestamp() + " - " + message;
+  fs.appendFile(logfile, message + "\n", function (err) {
+    if (err) throw err;
+    console.log(message);
+  })
+}
 
 var twoauth = new OAuth(
   "https://api.twitter.com/oauth/request_token",
@@ -28,20 +49,19 @@ var Twit = new twitter ({
 
 function Tweet (status) {
   Twit.updateStatus(status,
-    function(data) {
+    function (data) {
       if (data.id_str) {
-        console.log("Tweet sent: " + data.text);
+        log("Tweet " + data.id_str + ": " + data.text);
       }
     }
   );
 }
 
 function DM (user_id, text) {
-  console.log("DM: " + user_id);
   Twit.newDirectMessage(user_id, text,
-    function(data) {
+    function (data) {
       if (data.recipient) {
-        console.log("DM sent: " + data.text)
+        log("DM to @" + data.recipient.id_str + ": " + data.text)
       }
     }
   );
@@ -51,9 +71,9 @@ function findUrls (text) {
   var source = (text || "").toString(),
     urlArray = [],
     matchArray,
-    regexToken = /(((https?):\/\/)[\-\w@:%_\+.~#?,&\/\/=]+)/g;
+    regex = /(((https?):\/\/)[\-\w@:%_\+.~#?,&\/\/=]+)/g;
 
-  while( (matchArray = regexToken.exec( source )) !== null ){
+  while( (matchArray = regex.exec( source )) !== null ){
     var url = matchArray[0];
     urlArray.push( url );
   }
@@ -64,19 +84,17 @@ function handle_event (event, data){
   switch (event)
   {
     case "follow":
-      console.log("Follow event: " + data.source.id_str + " => " + data.target.id_str);
       if (data.source.id_str === config.user_id) {
-        console.log("Added @" + data.target.screen_name + " to friends.")
         friends.push(data.target.id_str);
+        log("Added @" + data.target.screen_name + " to friends.")
       }
     break;
     case "unfollow":
-    console.log("Unfollow event: " + data.source.id_str + " => " + data.target.id_str);
       if (data.source.id_str === config.user_id) {
-        console.log("Removed @" + data.target.screen_name + " from friends.")
         friends = friends.filter(function (friend) {
           return friend !== data.target.id_str;
         });
+        log("Removed @" + data.target.screen_name + " from friends.")
       }
     break;
   }
@@ -87,29 +105,33 @@ function parse_dm_blob (data){
     sender_id  = data.direct_message.sender.id_str,
     screen_name  = data.direct_message.sender.screen_name;
 
-  console.log("DM from @" + screen_name + " " + sender_id);
+  if (sender_id !== config.user_id) {
 
-  if (friends.indexOf(sender_id) > -1) {
+    log("DM from @" + screen_name + "(" + sender_id + ") " + message_id);
 
-    var tmpQueue = {
-      message_id: message_id,
-      sender_id: sender_id,
-      sender: data.direct_message.sender.screen_name,
-      created_at: data.direct_message.created_at,
-      urls: findUrls(data.direct_message.text)
-    };
+    if (friends.indexOf(sender_id) > -1) {
 
-    tweetQueue[message_id] = tmpQueue;
+      var tmpQueue = {
+        message_id: message_id,
+        sender_id: sender_id,
+        sender: data.direct_message.sender.screen_name,
+        created_at: data.direct_message.created_at,
+        urls: findUrls(data.direct_message.text)
+      };
 
-    if (tweetQueue[message_id]){
-      if (tweetQueue[message_id].urls.length > 1){
-        DM(parseInt(sender_id), "Received " + tweetQueue[message_id].urls.length + " links");
-        tweetQueue[message_id].urls.forEach(function (url) {
-          Tweet(url);
-        });
-      }else{
-        DM(parseInt(sender_id), "Received " + tweetQueue[message_id].urls.length + " link");
-        Tweet(tweetQueue[message_id].urls[0]);
+      tweetQueue[message_id] = tmpQueue;
+
+      if (tweetQueue[message_id] && tweetQueue[message_id].urls.length > 0){
+        if (tweetQueue[message_id].urls.length > 1){
+          DM(parseInt(sender_id), timestamp() + " Received " + tweetQueue[message_id].urls.length + " links");
+          tweetQueue[message_id].urls.forEach(function (url) {
+            Tweet(url);
+          });
+        }else{
+          DM(parseInt(sender_id), timestamp() + " Received " + tweetQueue[message_id].urls.length + " link");
+          Tweet(tweetQueue[message_id].urls[0]);
+        }
+
       }
 
     }
@@ -127,23 +149,23 @@ var userStream = new Stream({
 
 userStream.stream();
 
-userStream.on("connected", function(data) {
-  console.log("Listening to " + config.screen_name)
-  DM(parseInt(config.admin_id), "Listening to " + config.screen_name);
+userStream.on("connected", function (data) {
+  fs.appendFile("log.txt", "Listening to " + config.screen_name, function (err) {
+    if (err) throw err;
+    log("Listening to " + config.screen_name)
+  });
+
+  DM(parseInt(config.admin_id), timestamp() + " Listening to " + config.screen_name);
 });
 
-function stringIt(v){
-  return v.toString();
-}
-
-userStream.on("data", function(data) {
+userStream.on("data", function (data) {
   if (data.warning) {
-    console.log("WARNING");
-    DM(parseInt(config.admin_id), " WARNING: [" + data.code + "] " + data.message);
+    log("WARNING");
+    DM(parseInt(config.admin_id), timestamp() + " WARNING: [" + data.code + "] " + data.message);
   }
   if (data.friends) {
     friends = data.friends.map(String); // TODO: Update this for 64bit user IDs
-    console.log("Loaded friends");
+    log("Loaded friends");
   }
   if (data.event) {
     handle_event(data.event, data);
@@ -151,28 +173,30 @@ userStream.on("data", function(data) {
   if (data.direct_message) {
     parse_dm_blob(data);
   };
-  // console.log(data);
+  // log(data);
 });
 
-userStream.on("error", function(error) {
-  console.log("ERROR!");
-  console.log(error);
-  DM(parseInt(config.admin_id), "ERROR");
+userStream.on("error", function (error) {
+  log("ERROR!");
+  log(error);
+  DM(parseInt(config.admin_id), timestamp() + " ERROR");
 });
 
-userStream.on("close", function(error) {
-  console.log(error);
-  console.log("Reconnecting")
-  DM(parseInt(config.admin_id), "Reconnecting");
+userStream.on("close", function (error) {
+  log(error);
+  log("Reconnecting")
+  DM(parseInt(config.admin_id), timestamp() + " Reconnecting");
   userStream.stream();
 });
 
-userStream.on("heartbeat", function(){
-  console.log("--v^v---");
+userStream.on("heartbeat", function (){
+  if (show_heartbeat = true) {
+    console.log(timestamp() + " - --^v--")
+  }
 });
 
-userStream.on("garbage", function(data){
-  console.log("Can't be formatted:");
-  console.log(data);
+userStream.on("garbage", function (data){
+  log("Can't be formatted:");
+  log(data);
 });
 
