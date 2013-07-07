@@ -5,7 +5,7 @@ var twitter = require("twitter"),
   config = require("./config.json"), // See config-sample.json
   friends = [], // Users this account follows
   tweetQueue = {},
-  environment = "prod", // 'dev' for development or 'prod' for production
+  environment = "dev", // 'dev' for development or 'prod' for production
   show_heartbeat = true, // logs '--^v--' to stdout only
   logfile = "log.txt"; // name of the file you want log messages to output to
 
@@ -15,10 +15,12 @@ function pad (n) {
   return n < 10 ? '0' + n.toString(10) : n.toString(10);
 };
 
+var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
 function timestamp () {
   var d = new Date();
   var time = [pad(d.getHours()), pad(d.getMinutes()), pad(d.getSeconds())].join(':');
-  return [pad(d.getDate()), pad(d.getMonth()), time].join(' ');
+  return [pad(d.getDate()), months[d.getMonth()], time].join(' ');
 }
 
 function log (message, raw){
