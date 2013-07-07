@@ -21,8 +21,8 @@ function timestamp () {
   return [pad(d.getDate()), pad(d.getMonth()), time].join(' ');
 }
 
-function log (message){
-  var message = timestamp() + " - " + message;
+function log (message, raw){
+  var message = raw ? message : timestamp() + " - " + message;
   fs.appendFile(logfile, message + "\n", function (err) {
     if (err) throw err;
     console.log(message);
@@ -147,7 +147,14 @@ var userStream = new Stream({
   access_token_secret: config.oauth_secret,
 });
 
-userStream.stream();
+Twit.verifyCredentials(function (data) {
+  if (data.id_str){
+    userStream.stream();
+  } else {
+    log("Error");
+    log(data, true)
+  }
+});
 
 userStream.on("connected", function (data) {
   fs.appendFile("log.txt", "Listening to " + config.screen_name, function (err) {
@@ -173,12 +180,11 @@ userStream.on("data", function (data) {
   if (data.direct_message) {
     parse_dm_blob(data);
   };
-  // log(data);
 });
 
 userStream.on("error", function (error) {
   log("ERROR!");
-  log(error.data);
+  log(error, true);
   DM(parseInt(config.admin_id), timestamp() + " ERROR");
 });
 
