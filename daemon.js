@@ -5,7 +5,7 @@ var twitter = require("twitter"),
   config = require("./config.json"), // See config-sample.json
   friends = [], // Users this account follows
   tweetQueue = {},
-  environment = "dev", // 'dev' for development or 'prod' for production
+  environment = "prod", // 'dev' for development or 'prod' for production
   show_heartbeat = true, // logs '--^v--' to stdout only
   logfile = "log.txt"; // name of the file you want log messages to output to
 
@@ -178,7 +178,7 @@ userStream.on("data", function (data) {
 
 userStream.on("error", function (error) {
   log("ERROR!");
-  log(error);
+  log(error.data);
   DM(parseInt(config.admin_id), timestamp() + " ERROR");
 });
 
