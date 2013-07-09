@@ -25,7 +25,6 @@ function timestamp () {
 }
 
 function log (message, time){
-  var message = time ? message : timestamp() + " - " + message;
   fs.appendFile(logfile, message + "\n", function (err) {
     if (err) throw err;
     console.log(message);
@@ -51,7 +50,7 @@ function sendTweet (status) {
   twttr.updateStatus(status,
     function (data) {
       if (data.id_str) {
-        log("Tweet " + data.id_str + ": " + data.text, timestamp());
+        log(timestamp() + " Tweeted " + data.id_str + ": " + data.text);
       }
     }
   );
@@ -61,7 +60,7 @@ function sendDM (user_id, text) {
   twttr.newDirectMessage(user_id, text,
     function (data) {
       if (data.recipient) {
-        log("DM to @" + data.recipient.id_str + ": " + data.text, timestamp())
+        log(timestamp() + " DM to @" + data.recipient.id_str + ": " + data.text)
       }
     }
   );
@@ -75,7 +74,7 @@ function handleEvent (event, data){
     case "follow":
       if (data.source.id_str === config.user_id) {
         friends.push(data.target.id_str);
-        log("Added @" + data.target.screen_name + " to friends.", timestamp())
+        log(timestamp() + " Added @" + data.target.screen_name + " to friends.")
       }
     break;
     case "unfollow":
@@ -83,7 +82,7 @@ function handleEvent (event, data){
         friends = friends.filter(function (friend) {
           return friend !== data.target.id_str;
         });
-        log("Removed @" + data.target.screen_name + " from friends.", timestamp())
+        log(timestamp() + " Removed @" + data.target.screen_name + " from friends.")
       }
     break;
   }
@@ -96,7 +95,7 @@ function parseDM (data){
 
   if (sender_id !== config.user_id) {
 
-    log("DM from @" + screen_name + "(" + sender_id + ") " + message_id, timestamp());
+    log(timestamp() + " DM from @" + screen_name + "(" + sender_id + ") " + message_id);
 
     if (sender_id === config.admin_id) {
       if (data.direct_message.text === "ping"){
@@ -158,26 +157,26 @@ twttr.verifyCredentials(function (data) {
   if (data.id_str){
     userStream.stream();
   } else {
-    log("Error", timestamp());
-    log(data, false)
+    log(timestamp() + " Error");
+    log(data)
   }
 });
 
 // userStream listeners
 
 userStream.on("connected", function (data) {
-  log("Listening to " + config.screen_name, timestamp());
+  log(timestamp() + " Listening to " + config.screen_name);
   sendDM(parseInt(config.admin_id), timestamp() + " Listening to " + config.screen_name);
 });
 
 userStream.on("data", function (data) {
   if (data.warning) {
-    log("WARNING");
+    log(timestamp() + " WARNING");
     sendDM(parseInt(config.admin_id), timestamp() + " WARNING: [" + data.code + "] " + data.message);
   }
   if (data.friends) {
     friends = data.friends.map(String); // TODO: Update this for 64bit user IDs
-    log("Loaded friends");
+    log(timestamp() + " Loaded friends");
   }
   if (data.event) {
     handleEvent(data.event, data);
@@ -188,15 +187,16 @@ userStream.on("data", function (data) {
 });
 
 userStream.on("error", function (error) {
-  log("ERROR!");
-  log(error, true);
+  log(timestamp() + " Error:");
+  log(error);
   sendDM(parseInt(config.admin_id), timestamp() + " ERROR");
 });
 
 userStream.on("close", function (error) {
+  log(timestamp() + " Closed:");
   log(error);
-  log("Reconnecting")
-  sendDM(parseInt(config.admin_id), timestamp() + " Reconnecting");
+  log(timestamp() + " Reconnecting...")
+  sendDM(parseInt(config.admin_id), timestamp() + " Reconnecting...");
   userStream.stream();
 });
 
@@ -207,7 +207,7 @@ userStream.on("heartbeat", function (){
 });
 
 userStream.on("garbage", function (data){
-  log("Can't be formatted:");
+  log(timestamp() + " Can't be formatted:");
   log(data);
 });
 
