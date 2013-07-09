@@ -160,11 +160,7 @@ twttr.verifyCredentials(function (data) {
 // userStream listeners
 
 userStream.on("connected", function (data) {
-  fs.appendFile("log.txt", "Listening to " + config.screen_name, function (err) {
-    if (err) throw err;
-    log("Listening to " + config.screen_name)
-  });
-
+  log("Listening to " + config.screen_name, timestamp());
   sendDM(parseInt(config.admin_id), timestamp() + " Listening to " + config.screen_name);
 });
 
