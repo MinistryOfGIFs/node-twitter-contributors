@@ -112,12 +112,12 @@ function parseDM (data){
 
       if (tweetQueue[message_id] && tweetQueue[message_id].urls.length > 0){
         if (tweetQueue[message_id].urls.length > 1){
-          sendDM(parseInt(sender_id), timestamp() + " Received " + tweetQueue[message_id].urls.length + " links");
+          sendDM(parseInt(sender_id), timestamp() + " Received " + tweetQueue[message_id].urls.length + " links: \n" + tweetQueue[message_id].urls.join(" \n"));
           tweetQueue[message_id].urls.forEach(function (url) {
             sendTweet(url);
           });
         }else{
-          sendDM(parseInt(sender_id), timestamp() + " Received " + tweetQueue[message_id].urls.length + " link");
+          sendDM(parseInt(sender_id), timestamp() + " Received " + tweetQueue[message_id].urls.length + " link: \n" + tweetQueue[message_id].urls[0]);
           sendTweet(tweetQueue[message_id].urls[0]);
         }
 
