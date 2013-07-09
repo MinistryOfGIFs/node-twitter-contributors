@@ -99,7 +99,7 @@ function parseDM (data){
     log("DM from @" + screen_name + "(" + sender_id + ") " + message_id, timestamp());
 
     if (sender_id === config.admin_id) {
-      if (data.direct_message.text = "ping"){
+      if (data.direct_message.text === "ping"){
         sendDM(parseInt(sender_id), timestamp() + " pong!")        
       }
     }
