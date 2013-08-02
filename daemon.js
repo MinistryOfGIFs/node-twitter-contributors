@@ -6,7 +6,7 @@ var twitter = require("twitter"),
   tweetQueue = {},
   environment = "dev", // 'dev' for development or 'prod' for production
   show_heartbeat = true, // logs '--^v--' to stdout only
-  heartbeat_timer = {},
+  heartbeat_timer = null,
   logfile = "log.txt"; // name of the file you want log messages to output to
 
 config = config[environment];
@@ -50,7 +50,7 @@ function heartbeatTimer (timeout) {
     if (timeout > 1){
       timeout--
     }else{
-      log(timestamp() + "Heartbeat timed out, reconnectiong...");
+      log(timestamp() + " Heartbeat timed out, reconnectiong...");
       clearInterval(heartbeat_timer);
       userStream.destroy();
       initStream();
@@ -174,7 +174,7 @@ function initStream(){
     } else {
       log(timestamp() + " Error");
       log(data);
-      log(timestamp() + "Connection failed, retrying in 60 seconds...");
+      log(timestamp() + " Connection failed, retrying in 60 seconds...");
       heartbeatTimer(60);
     }
   })
