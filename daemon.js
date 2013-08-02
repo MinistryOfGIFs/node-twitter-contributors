@@ -6,10 +6,10 @@ var twitter = require("twitter"),
   tweetQueue = {},
   environment = "dev", // 'dev' for development or 'prod' for production
   show_heartbeat = true, // logs '--^v--' to stdout only
+  heartbeat_timer = {},
   logfile = "log.txt"; // name of the file you want log messages to output to
 
 config = config[environment];
-
 // Misc helpers
 
 function padNum (n) {
@@ -42,6 +42,20 @@ function parseURLs (text) {
     urlArray.push( url );
   }
   return urlArray
+}
+
+function heartbeatTimer (timeout) {
+  timeout = timeout
+  heartbeat_timer = setInterval(function(){
+    if (timeout > 1){
+      timeout--
+    }else{
+      log(timestamp() + "Heartbeat timed out, reconnectiong...");
+      clearInterval(heartbeat_timer);
+      userStream.destroy();
+      initStream();
+    }
+  },1000);
 }
 
 // twttr functions
@@ -152,15 +166,21 @@ var userStream = new Stream({
 });
 
 // Verify credentials and connect if successful
+function initStream(){
+  twttr.verifyCredentials(function (data) {
+    if (data.id_str){
+      userStream.stream();
+      heartbeatTimer(60);
+    } else {
+      log(timestamp() + " Error");
+      log(data);
+      log(timestamp() + "Connection failed, retrying in 60 seconds...");
+      heartbeatTimer(60);
+    }
+  })
+}
 
-twttr.verifyCredentials(function (data) {
-  if (data.id_str){
-    userStream.stream();
-  } else {
-    log(timestamp() + " Error");
-    log(data)
-  }
-});
+initStream();
 
 // userStream listeners
 
@@ -197,10 +217,13 @@ userStream.on("close", function (error) {
   log(error);
   log(timestamp() + " Reconnecting...")
   sendDM(parseInt(config.admin_id), timestamp() + " Reconnecting...");
+  userStream.destroy();
   userStream.stream();
 });
 
 userStream.on("heartbeat", function (){
+  clearInterval(heartbeat_timer);
+  heartbeatTimer(60);
   if (show_heartbeat = true) {
     console.log(timestamp() + " - --^v--")
   }
