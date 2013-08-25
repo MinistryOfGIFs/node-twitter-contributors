@@ -1,4 +1,5 @@
-var twitter = require("twitter"),
+var util = require("util"),
+  twitter = require("twitter"),
   Stream = require("user-stream"),
   fs = require('fs'),
   config = require("./config.json"), // See config-sample.json
@@ -24,7 +25,7 @@ function timestamp () {
   return [padNum(d.getDate()), months[d.getMonth()], time].join(' ');
 }
 
-function log (message, time){
+function log (message){
   fs.appendFile(logfile, message + "\n", function (err) {
     if (err) throw err;
     console.log(message);
@@ -74,7 +75,7 @@ function sendDM (user_id, text) {
   twttr.newDirectMessage(user_id, text,
     function (data) {
       if (data.recipient) {
-        log(timestamp() + " DM to @" + data.recipient.id_str + ": " + data.text)
+        log(timestamp() + " DM sent to @" + data.recipient.screen_name + ": " + data.text)
       }
     }
   );
@@ -170,12 +171,12 @@ function initStream(){
   twttr.verifyCredentials(function (data) {
     if (data.id_str){
       userStream.stream();
-      heartbeatTimer(60);
+      heartbeatTimer(120);
     } else {
       log(timestamp() + " Error");
-      log(data);
-      log(timestamp() + " Connection failed, retrying in 60 seconds...");
-      heartbeatTimer(60);
+      log(util.inspect(data, {depth:null}));
+      log(timestamp() + " Connection failed, retrying in 120 seconds...");
+      heartbeatTimer(120);
     }
   })
 }
@@ -185,8 +186,8 @@ initStream();
 // userStream listeners
 
 userStream.on("connected", function (data) {
-  log(timestamp() + " Listening to " + config.screen_name);
-  sendDM(parseInt(config.admin_id), timestamp() + " Listening to " + config.screen_name);
+  log(timestamp() + " Connected to " + config.screen_name);
+  sendDM(parseInt(config.admin_id), timestamp() + " Connected to " + config.screen_name);
 });
 
 userStream.on("data", function (data) {
@@ -196,7 +197,6 @@ userStream.on("data", function (data) {
   }
   if (data.friends) {
     friends = data.friends.map(String); // TODO: Update this for 64bit user IDs
-    log(timestamp() + " Loaded friends");
   }
   if (data.event) {
     handleEvent(data.event, data);
@@ -209,7 +209,8 @@ userStream.on("data", function (data) {
 userStream.on("error", function (error) {
   log(timestamp() + " Error:");
   log(error);
-  sendDM(parseInt(config.admin_id), timestamp() + " ERROR");
+  log(util.inspect(error, {depth:null}));
+  sendDM(parseInt(config.admin_id), timestamp() + " ERROR" + error);
 });
 
 userStream.on("close", function (error) {
@@ -223,7 +224,7 @@ userStream.on("close", function (error) {
 
 userStream.on("heartbeat", function (){
   clearInterval(heartbeat_timer);
-  heartbeatTimer(60);
+  heartbeatTimer(120);
   if (show_heartbeat = true) {
     console.log(timestamp() + " - --^v--")
   }
