@@ -16,6 +16,7 @@
   },
   "scripts": {"start": "node daemon.js"},
   "dependencies": {
+    "util": "0.4.9",
     "user-stream": "0.0.5",
     "twitter": "0.1.18"
   }
