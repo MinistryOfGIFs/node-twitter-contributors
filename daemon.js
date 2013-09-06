@@ -200,7 +200,7 @@ initStream();
 // userStream listeners
 
 userStream.on("connected", function (data) {
-  log(timestamp() + " Connected.");
+  log(timestamp() + " Connected to " + config.screen_name + ".");
   sendDM(config.admin_id, timestamp() + " Connected.");
 });
 
