@@ -1,0 +1,11 @@
+06 Sep 02:20:19 Connected.
+06 Sep 02:20:20 DM sent to @Roach: 06 Sep 02:20:19 Connected.
+06 Sep 02:21:09 Connected.
+06 Sep 02:21:10 DM sent to @Roach: 06 Sep 02:21:09 Connected.
+06 Sep 02:22:13 Connected.
+06 Sep 02:22:14 DM sent to @Roach: 06 Sep 02:22:13 Connected.
+06 Sep 02:22:23 DM from @Roach(228925627) 375911787729661952
+06 Sep 02:22:24 Tweeted 375911788736294912: http://t.co/t46yxobbl5
+06 Sep 02:22:24 DM sent to @Roach: 06 Sep 02:22:23 Received 1 link: 
+http://t.co/C0fEyOKbuD
+06 Sep 02:23:08 DM sent to @Roach: 06 Sep 02:23:07 Followed by @GIFs (3774 followers)
