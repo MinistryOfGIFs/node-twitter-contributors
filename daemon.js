@@ -3,7 +3,6 @@ var util = require("util"),
     Stream = require("user-stream"),
     fs = require('fs'),
     request = require('request'),
-    _ = require('underscore'),
     environment = "dev", // 'dev' for development or 'prod' for production
     config_file = require("./config.json"), // See config-sample.json
     config = config_file[environment],
