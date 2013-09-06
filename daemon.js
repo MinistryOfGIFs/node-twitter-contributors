@@ -5,7 +5,7 @@ var util = require("util"),
     environment = "dev", // 'dev' for development or 'prod' for production
     config_file = require("./config.json"), // See config-sample.json
     config = config_file[environment],
-    logfile = config.screen_name + "log.txt", // name of the file you want log messages to output to
+    logfile = config.screen_name + "-log.txt", // name of the file you want log messages to output to
     friends = [], // Users this account follows
     tweet_queue = {},
     show_heartbeat = true, // logs '--^v--' to stdout only
@@ -200,7 +200,7 @@ initStream();
 // userStream listeners
 
 userStream.on("connected", function (data) {
-  log(timestamp() + " Connected to " + config.screen_name + ".");
+  log(timestamp() + " Connected to @" + config.screen_name + ".");
   sendDM(config.admin_id, timestamp() + " Connected.");
 });
 
