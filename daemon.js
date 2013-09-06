@@ -1,7 +1,9 @@
 var util = require("util"),
     twitter = require("twitter"),
     Stream = require("user-stream"),
-    fs = require('fs');
+    fs = require('fs'),
+    request = require('request'),
+    _ = require('underscore'),
     environment = "dev", // 'dev' for development or 'prod' for production
     config_file = require("./config.json"), // See config-sample.json
     config = config_file[environment],
@@ -43,6 +45,22 @@ function parseURLs (text) {
     urlArray.push( url );
   }
   return urlArray
+}
+
+function expandURLs (urls, cb) {
+  var expandedURLs = [];
+  var expandURL = function(urls) {
+    if (expandedURLs.length == urls.length) {
+      cb(null, expandedURLs);
+    } else {
+      request({ method: "HEAD", url: urls[expandedURLs.length], followAllRedirects: true }, function(err, response) {
+        if (err) return cb(err);
+        expandedURLs.push(response.request.href);
+        expandURL(urls);
+      });
+    }
+  }
+  expandURL(urls);
 }
 
 function heartbeatTimer (timeout) {
@@ -164,29 +182,36 @@ function parseDM (data){
     }
 
     if (friends.indexOf(sender_id) > -1) {
-
-      var tmpQueue = {
-        message_id: message_id,
-        sender_id: sender_id,
-        sender: data.direct_message.sender.screen_name,
-        created_at: data.direct_message.created_at,
-        urls: parseURLs(data.direct_message.text)
-      };
-
-      tweet_queue[message_id] = tmpQueue;
-
-      if (tweet_queue[message_id] && tweet_queue[message_id].urls.length > 0){
-        if (tweet_queue[message_id].urls.length > 1){
-          sendDM(sender_id, timestamp() + " Received " + tweet_queue[message_id].urls.length + " links: \n" + tweet_queue[message_id].urls.join(" \n"));
-          tweet_queue[message_id].urls.forEach(function (url) {
-            sendTweet(url);
-          });
-        }else{
-          sendDM(sender_id, timestamp() + " Received " + tweet_queue[message_id].urls.length + " link: \n" + tweet_queue[message_id].urls[0]);
-          sendTweet(tweet_queue[message_id].urls[0]);
+      expandURLs(parseURLs(data.direct_message.text), function(err, urls) {
+        if (err) {
+          console.log(err);
+          return;
         }
 
-      }
+        var tmpQueue = {
+          message_id: message_id,
+          sender_id: sender_id,
+          sender: data.direct_message.sender.screen_name,
+          created_at: data.direct_message.created_at,
+          urls: urls
+        };
+
+        tweet_queue[message_id] = tmpQueue;
+
+        if (tweet_queue[message_id] && tweet_queue[message_id].urls.length > 0){
+          if (tweet_queue[message_id].urls.length > 1){
+            sendDM(sender_id, timestamp() + " Received " + tweet_queue[message_id].urls.length + " links: \n" + tweet_queue[message_id].urls.join(" \n"));
+            tweet_queue[message_id].urls.forEach(function (url) {
+              sendTweet(url);
+            });
+          }else{
+            sendDM(sender_id, timestamp() + " Received " + tweet_queue[message_id].urls.length + " link: \n" + tweet_queue[message_id].urls[0]);
+            sendTweet(tweet_queue[message_id].urls[0]);
+          }
+
+        }
+
+      });
 
     }
 
@@ -214,7 +239,7 @@ userStream.on("data", function (data) {
   }
   if (data.event) {
     handleEvent(data.event, data);
-  }  
+  }
   if (data.direct_message) {
     parseDM(data);
   };
