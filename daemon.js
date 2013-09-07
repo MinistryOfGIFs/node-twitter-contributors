@@ -29,17 +29,9 @@ function log (message){
   })
 }
 
+var parseURLregex = /(((https?):\/\/)[\-\w@:%_\+.~#?,&\/\/=]+)/g;
 function parseURLs (text) {
-  var source = (text || "").toString(),
-    urlArray = [],
-    matchArray,
-    regex = /(((https?):\/\/)[\-\w@:%_\+.~#?,&\/\/=]+)/g;
-
-  while( (matchArray = regex.exec( source )) !== null ){
-    var url = matchArray[0];
-    urlArray.push( url );
-  }
-  return urlArray
+  return String(text || '').match(parseURLregex);
 }
 
 function heartbeatTimer (timeout) {
