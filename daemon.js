@@ -109,30 +109,26 @@ function reconnectStream(timeout){
   }, (timeout * 1000));
 }
 
-function handleEvent (event, data){
-  switch (event)
-  {
-    case "follow":
-      // Handle follow events for the authed user as well as incoming follows
-      if (data.source.id_str === config.user_id) {
-        friends.push(data.target.id_str);
-        log(timestamp() + " Added @" + data.target.screen_name + " to friends.")
-      }else{
-        // Notify the admin when followed by a user with more than x followers
-        if (parseInt(data.source.followers_count) > 2000){
-          sendDM(config.admin_id, timestamp() + " Followed by @" + data.source.screen_name + " (" + data.source.followers_count + " followers)");
-        };
-      }
-    break;
-    case "unfollow":
-      // This event is only available for the current authed user. This is not received when a user unfollows you.
-      if (data.source.id_str === config.user_id) {
-        friends = friends.filter(function (friend) {
-          return friend !== data.target.id_str;
-        });
-        log(timestamp() + " Removed @" + data.target.screen_name + " from friends.")
-      }
-    break;
+function handleEvent(event, data) {
+  if (event === 'follow') {
+    // Handle follow events for the authed user as well as incoming follows
+    if (data.source.id_str === config.user_id) {
+      friends.push(data.target.id_str);
+      log(timestamp() + " Added @" + data.target.screen_name + " to friends.")
+    } else {
+      // Notify the admin when followed by a user with more than x followers
+      if (parseInt(data.source.followers_count) > 2000){
+        sendDM(config.admin_id, timestamp() + " Followed by @" + data.source.screen_name + " (" + data.source.followers_count + " followers)");
+      };
+    }
+  } else if (event === 'unfollow') {
+    // This event is only available for the current authed user. This is not received when a user unfollows you.
+    if (data.source.id_str === config.user_id) {
+      friends = friends.filter(function (friend) {
+        return friend !== data.target.id_str;
+      });
+      log(timestamp() + " Removed @" + data.target.screen_name + " from friends.")
+    }
   }
 }
 
