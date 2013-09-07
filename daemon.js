@@ -13,16 +13,13 @@ var util = require("util"),
 
 // Misc helpers
 
-function padNum (n) {
-  return n < 10 ? '0' + n.toString(10) : n.toString(10);
-};
-
-var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
 function timestamp () {
   var d = new Date();
-  var time = [padNum(d.getHours()), padNum(d.getMinutes()), padNum(d.getSeconds())].join(':');
-  return [padNum(d.getDate()), months[d.getMonth()], time].join(' ');
+  var parts = d.toString().split(' ');
+  var day = parts[2];
+  var month = parts[1];
+  var time = parts[4];
+  return [day, month, time].join(' ');
 }
 
 function log (message){
