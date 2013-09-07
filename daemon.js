@@ -221,13 +221,13 @@ userStream.on("error", function (error) {
         break;
       default:
         sendDM(config.admin_id, timestamp() + " ERROR: " + errorCode);
-    };
-  };
+    }
+  }
 
   if (error[type] = 'request'){
       sendDM(config.admin_id, timestamp() + " SOCKET ERROR: Reconnecting in 2 minutes.");
       reconnectStream(240);
-    };
+  }
 
 });
 
