@@ -13,7 +13,7 @@ var util = require("util"),
 
 // Misc helpers
 
-function timestamp () {
+function timestamp() {
   var d = new Date();
   var parts = d.toString().split(' ');
   var day = parts[2];
@@ -22,7 +22,7 @@ function timestamp () {
   return [day, month, time].join(' ');
 }
 
-function log (message){
+function log(message) {
   fs.appendFile(logfile, message + "\n", function (err) {
     if (err) throw err;
     console.log(message);
@@ -30,26 +30,26 @@ function log (message){
 }
 
 var parseURLregex = /(((https?):\/\/)[\-\w@:%_\+.~#?,&\/\/=]+)/g;
-function parseURLs (text) {
+function parseURLs(text) {
   return String(text || '').match(parseURLregex);
 }
 
-function heartbeatTimer (timeout) {
+function heartbeatTimer(timeout) {
   timeout = timeout || 0
-  heartbeat_timer = setInterval(function(){
-    if (timeout > 1){
-      timeout--
-    }else{
+  heartbeat_timer = setInterval(function () {
+    if (timeout > 1) {
+      timeout--;
+    } else {
       log(timestamp() + " Heartbeat timed out, reconnecting...");
       clearInterval(heartbeat_timer);
-      reconnectStream()
+      reconnectStream();
     }
-  },1000);
+  }, 1000);
 }
 
 // twttr setup and helpers
 
-var twttr = new twitter ({
+var twttr = new twitter({
   consumer_key: config.consumer_key,
   consumer_secret: config.consumer_secret,
   access_token_key: config.oauth_token,
@@ -57,7 +57,7 @@ var twttr = new twitter ({
   rest_base: "https://api.twitter.com/1.1"
 });
 
-function sendTweet (status) {
+function sendTweet(status) {
   twttr.updateStatus(status,
     function (data) {
       if (data.id_str) {
@@ -67,14 +67,12 @@ function sendTweet (status) {
   );
 }
 
-function sendDM (user_id, text) {
-  twttr.newDirectMessage(parseInt(user_id), text,
-    function (data) {
-      if (data.recipient) {
-        log(timestamp() + " DM sent to @" + data.recipient.screen_name + ": " + data.text)
-      }
+function sendDM(user_id, text) {
+  twttr.newDirectMessage(parseInt(user_id), text, function (data) {
+    if (data.recipient) {
+      log(timestamp() + " DM sent to @" + data.recipient.screen_name + ": " + data.text);
     }
-  );
+  });
 }
 
 // userStream setup and helpers
@@ -86,10 +84,10 @@ var userStream = new Stream({
   access_token_secret: config.oauth_secret,
 });
 
-function initStream(){
+function initStream() {
   // Verify credentials and connect if successful
   twttr.verifyCredentials(function (data) {
-    if (data.id_str){
+    if (data.id_str) {
       userStream.stream();
       heartbeatTimer(120);
     } else {
@@ -100,13 +98,13 @@ function initStream(){
   })
 }
 
-function reconnectStream(timeout){
+function reconnectStream(timeout) {
   // Kill current connection and reconnect
-  timeout = timeout || 0
-  reconnect_timer = setTimeout(function(){
+  timeout = timeout || 0;
+  reconnect_timer = setTimeout(function () {
     userStream.destroy();
     initStream();
-  }, (timeout * 1000));
+  }, timeout * 1000);
 }
 
 function handleEvent(event, data) {
@@ -117,7 +115,7 @@ function handleEvent(event, data) {
       log(timestamp() + " Added @" + data.target.screen_name + " to friends.")
     } else {
       // Notify the admin when followed by a user with more than x followers
-      if (parseInt(data.source.followers_count) > 2000){
+      if (parseInt(data.source.followers_count) > 2000) {
         sendDM(config.admin_id, timestamp() + " Followed by @" + data.source.screen_name + " (" + data.source.followers_count + " followers)");
       };
     }
@@ -132,7 +130,7 @@ function handleEvent(event, data) {
   }
 }
 
-function parseDM (data){
+function parseDM (data) {
   // Handle incoming DMs
   var message_id = data.direct_message.id_str,
     sender_id  = data.direct_message.sender.id_str,
@@ -143,8 +141,8 @@ function parseDM (data){
     log(timestamp() + " DM from @" + screen_name + "(" + sender_id + ") " + message_id);
 
     if (sender_id === config.admin_id) {
-      if (data.direct_message.text === "ping"){
-        sendDM(sender_id, timestamp() + " pong!")
+      if (data.direct_message.text === "ping") {
+        sendDM(sender_id, timestamp() + " pong!");
       }
     }
 
@@ -160,13 +158,13 @@ function parseDM (data){
 
       tweet_queue[message_id] = tmpQueue;
 
-      if (tweet_queue[message_id] && tweet_queue[message_id].urls.length > 0){
-        if (tweet_queue[message_id].urls.length > 1){
+      if (tweet_queue[message_id] && tweet_queue[message_id].urls.length > 0) {
+        if (tweet_queue[message_id].urls.length > 1) {
           sendDM(sender_id, timestamp() + " Received " + tweet_queue[message_id].urls.length + " links: \n" + tweet_queue[message_id].urls.join(" \n"));
           tweet_queue[message_id].urls.forEach(function (url) {
             sendTweet(url);
           });
-        }else{
+        } else {
           sendDM(sender_id, timestamp() + " Received " + tweet_queue[message_id].urls.length + " link: \n" + tweet_queue[message_id].urls[0]);
           sendTweet(tweet_queue[message_id].urls[0]);
         }
@@ -208,9 +206,9 @@ userStream.on("data", function (data) {
 userStream.on("error", function (error) {
   log(timestamp() + " Error:\n" + util.inspect(error, {depth:null}));
 
-  if (error[type] = 'response'){
+  if (error[type] = 'response') {
     var errorCode = error[data][code];
-    switch (errorCode){
+    switch (errorCode) {
       case "420":
         sendDM(config.admin_id, timestamp() + " ERROR 420: Rate limited, Reconnecting in 10 minutes.");
         reconnectStream(600);
@@ -224,9 +222,9 @@ userStream.on("error", function (error) {
     }
   }
 
-  if (error[type] = 'request'){
-      sendDM(config.admin_id, timestamp() + " SOCKET ERROR: Reconnecting in 2 minutes.");
-      reconnectStream(240);
+  if (error[type] = 'request') {
+    sendDM(config.admin_id, timestamp() + " SOCKET ERROR: Reconnecting in 2 minutes.");
+    reconnectStream(240);
   }
 
 });
@@ -234,21 +232,21 @@ userStream.on("error", function (error) {
 userStream.on("close", function (error) {
   log(timestamp() + " Closed:");
   log(error);
-  log(timestamp() + " Reconnecting...")
+  log(timestamp() + " Reconnecting...");
   sendDM(config.admin_id, timestamp() + " Reconnecting...");
   userStream.destroy();
   userStream.stream();
 });
 
-userStream.on("heartbeat", function (){
+userStream.on("heartbeat", function () {
   clearInterval(heartbeat_timer);
   heartbeatTimer(120);
   if (show_heartbeat = true) {
-    console.log(timestamp() + " - --^v--")
+    console.log(timestamp() + " - --^v--");
   }
 });
 
-userStream.on("garbage", function (data){
+userStream.on("garbage", function (data) {
   log(timestamp() + " Can't be formatted:");
   log(data);
 });
