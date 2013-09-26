@@ -11,7 +11,9 @@ var util = require("util"),
     tweet_queue = [],
     show_heartbeat = true, // logs '--^v--' to stdout only
     heartbeat_timer = null,
-    tweet_rate = 15; // Minutes between Tweets
+    tweet_rate = 15, // Minutes between Tweets
+    queue_timer = {},
+    processing_queue = 0;
 
 // Misc helpers
 
@@ -94,6 +96,30 @@ function sendDM(user_id, text) {
   });
 }
 
+function tweetFromQueue(){
+  var url_info = tweet_queue.shift();
+  sendTweet(url_info.url, function(tweet_id, tweet_text){
+    msg = timestamp() + " Tweeted: https://twitter.com/" + config.screen_name + "/status/" + tweet_id;
+    log(msg);
+    sendDM(url_info.sender_id, msg);
+  });
+}
+
+function processQueue(){
+  if (processing_queue === 0){
+    processing_queue = 1;
+    queue_timer = setInterval(function(){
+      if (tweet_queue.length < 1){
+        processing_queue = 0;
+        clearInterval(queue_timer);
+      }else{
+        tweetFromQueue();
+      }
+    }, tweet_rate * 60000);
+  }else{
+  }
+}
+
 // userStream setup and helpers
 
 var userStream = new Stream({
@@ -156,9 +182,7 @@ function parseDM (data) {
     screen_name  = data.direct_message.sender.screen_name;
 
   if (sender_id !== config.user_id) {
-
     log(timestamp() + " DM from @" + screen_name + "(" + sender_id + ") " + message_id);
-
     if (sender_id === config.admin_id) {
       if (data.direct_message.text === "ping") {
         sendDM(sender_id, timestamp() + " pong!");
@@ -193,38 +217,10 @@ function parseDM (data) {
   }
 }
 
-function tweetFromQueue(){
-  var url_info = tweet_queue.shift();
-  sendTweet(url_info.url, function(tweet_id, tweet_text){
-    msg = timestamp() + " Tweeted: https://twitter.com/" + config.screen_name + "/status/" + tweet_id;
-    log(msg);
-    sendDM(url_info.sender_id, msg);
-  });
-}
-
-var processing_queue = 0;
-var queue_timer = {};
-function processQueue(){
-  if (processing_queue === 0){
-    processing_queue = 1;
-    queue_timer = setInterval(function(){
-      if (tweet_queue.length < 1){
-        processing_queue = 0;
-        clearInterval(queue_timer);
-      }else{
-        tweetFromQueue();
-      }
-    }, tweet_rate * 60000);
-  }else{
-  }
-}
-
 // Initialize userStream
-
 initStream();
 
 // userStream listeners
-
 userStream.on("connected", function (data) {
   log(timestamp() + " Connected to @" + config.screen_name + ".");
   sendDM(config.admin_id, timestamp() + " Connected.");
