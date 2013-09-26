@@ -3,7 +3,7 @@ var util = require("util"),
     Stream = require("user-stream"),
     fs = require('fs'),
     request = require('request'),
-    environment = "dev", // 'dev' for development or 'prod' for production
+    environment = "prod", // 'dev' for development or 'prod' for production
     config_file = require("./config.json"), // See config-sample.json
     config = config_file[environment],
     logfile = "./logs/" + config.screen_name + "-log.txt", // name of the file you want log messages to output to
@@ -11,7 +11,7 @@ var util = require("util"),
     tweet_queue = [],
     show_heartbeat = true, // logs '--^v--' to stdout only
     heartbeat_timer = null,
-    tweet_rate = 10; // Minutes between Tweets
+    tweet_rate = 15; // Minutes between Tweets
 
 // Misc helpers
 
@@ -176,11 +176,30 @@ function parseDM (data) {
           url: url
         };
         tweet_queue.push(tmp_queue);
-        sendDM(tmp_queue.sender_id, timestamp() + " Received: \n" + tmp_queue.url);
-        processQueue();
+        twttr.getUserTimeline({"count": 1}, function(data){
+          var system_date = new Date();
+          var tweet_date = data[0] ? new Date(Date.parse(data[0].created_at)) : 0;
+          since_last = Math.floor((system_date - tweet_date) / 60000);
+          if (since_last <= tweet_rate){
+            sendDM(tmp_queue.sender_id, timestamp() + " URL Received:\n" + tmp_queue.url + "\nWill Tweet in ~" + (tweet_queue.length * tweet_rate) + "min.");
+            processQueue();
+          }else{
+            sendDM(tmp_queue.sender_id, timestamp() + " URL Received:\n" + tmp_queue.url);
+            tweetFromQueue();
+          }
+        });
       });
     }
   }
+}
+
+function tweetFromQueue(){
+  var url_info = tweet_queue.shift();
+  sendTweet(url_info.url, function(tweet_id, tweet_text){
+    msg = timestamp() + " Tweeted: https://twitter.com/" + config.screen_name + "/status/" + tweet_id;
+    log(msg);
+    sendDM(url_info.sender_id, msg);
+  });
 }
 
 var processing_queue = 0;
@@ -189,21 +208,17 @@ function processQueue(){
   if (processing_queue === 0){
     processing_queue = 1;
     queue_timer = setInterval(function(){
-      if (tweet_queue.length > 0){
-        url_info = tweet_queue.pop();
-        sendTweet(url_info.url, function(tweet_id, tweet_text){
-          msg = timestamp() + " Tweeted: https://twitter.com/" + config.screen_name + "/status/" + tweet_id;
-          log(msg);
-          sendDM(url_info.sender_id, msg);
-        });
-      }else{
+      if (tweet_queue.length < 1){
         processing_queue = 0;
         clearInterval(queue_timer);
+      }else{
+        tweetFromQueue();
       }
     }, tweet_rate * 60000);
   }else{
   }
 }
+
 // Initialize userStream
 
 initStream();
