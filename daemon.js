@@ -205,7 +205,7 @@ function parseDM (data) {
           var tweet_date = data[0] ? new Date(Date.parse(data[0].created_at)) : 0;
           since_last = Math.floor((system_date - tweet_date) / 60000);
           if (since_last <= tweet_rate){
-            sendDM(tmp_queue.sender_id, timestamp() + " URL Received:\n" + tmp_queue.url + "\nWill Tweet in ~" + (tweet_queue.length * tweet_rate) + "min.");
+            sendDM(tmp_queue.sender_id, timestamp() + " URL Received and queued:\n" + tmp_queue.url);
             processQueue();
           }else{
             sendDM(tmp_queue.sender_id, timestamp() + " URL Received:\n" + tmp_queue.url);
