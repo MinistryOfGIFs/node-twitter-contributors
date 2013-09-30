@@ -99,7 +99,7 @@ function sendDM(user_id, text) {
 function tweetFromQueue(){
   var url_info = tweet_queue.shift();
   sendTweet(url_info.url, function(tweet_id, tweet_text){
-    msg = timestamp() + " Tweeted: https://twitter.com/" + config.screen_name + "/status/" + tweet_id;
+    msg = timestamp() + " Tweeted https://twitter.com/" + config.screen_name + "/status/" + tweet_id;
     log(msg);
     sendDM(url_info.sender_id, msg);
   });
@@ -205,10 +205,9 @@ function parseDM (data) {
           var tweet_date = data[0] ? new Date(Date.parse(data[0].created_at)) : 0;
           since_last = Math.floor((system_date - tweet_date) / 60000);
           if (since_last <= tweet_rate){
-            sendDM(tmp_queue.sender_id, timestamp() + " URL Received and queued:\n" + tmp_queue.url);
+            sendDM(tmp_queue.sender_id, timestamp() + " Queued " + tmp_queue.url);
             processQueue();
           }else{
-            sendDM(tmp_queue.sender_id, timestamp() + " URL Received:\n" + tmp_queue.url);
             tweetFromQueue();
           }
         });
