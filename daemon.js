@@ -7,7 +7,7 @@ var util = require("util"),
     config_file = require("./config.json"), // See config-sample.json
     config = config_file[environment],
     logfile = "./logs/" + config.screen_name + "-log.txt", // name of the file you want log messages to output to
-    friends = [], // Users this account follows
+    friends = [], // Users this account follows, populated when the 'friends' event is streamed on connection
     tweet_queue = [],
     show_heartbeat = true, // logs '--^v--' to stdout only
     heartbeat_timer = null,
@@ -35,7 +35,7 @@ function log(message) {
 
 var parseURLregex = /(((https?):\/\/)[\-\w@:%_\+.~#?,&\/\/=]+)/g;
 function parseURLs(text) {
-  return String(text || '').match(parseURLregex);
+  return String(text).match(parseURLregex) || [];
 }
 
 function expandURLs (urls, cb) {
@@ -101,7 +101,7 @@ function tweetFromQueue(){
   sendTweet(url_info.url, function(tweet_id, tweet_text){
     msg = timestamp() + " Tweeted https://twitter.com/" + config.screen_name + "/status/" + tweet_id;
     log(msg);
-    sendDM(url_info.sender_id, msg);
+    sendDM(url_info.user_id, msg);
   });
 }
 
@@ -175,37 +175,27 @@ function handleEvent(event, data) {
   }
 }
 
-function parseDM (data) {
+function parseMessage (data) {
   // Handle incoming DMs
-  var message_id = data.direct_message.id_str,
-    sender_id  = data.direct_message.sender.id_str,
-    screen_name  = data.direct_message.sender.screen_name;
 
-  if (sender_id !== config.user_id) {
-    log(timestamp() + " DM from @" + screen_name + "(" + sender_id + ") " + message_id);
-    if (sender_id === config.admin_id) {
-      if (data.direct_message.text === "ping") {
-        sendDM(sender_id, timestamp() + " pong!");
-      }
-    }
-
-    if (friends.indexOf(sender_id) > -1) {
-      urls = parseURLs(data.direct_message.text);
+  if (data.user_id !== config.user_id) {
+    log(timestamp() + " " + data.message_type + " from @" + data.screen_name + "(" + data.user_id + ") " + data.message_id);
+    if (friends.indexOf(data.user_id) > -1) {
+      urls = parseURLs(data.text);
       urls.forEach(function (url) {
-        var tmp_queue = {
-          message_id: message_id,
-          sender_id: sender_id,
-          sender: data.direct_message.sender.screen_name,
-          created_at: data.direct_message.created_at,
-          url: url
-        };
+        var tmp_queue = { message_id: data.message_id,
+                          created_at: data.created_at,
+                          user_id: data.user_id,
+                          screen_name: data.screen_name,
+                          text: data.text,
+                          url: url };
         tweet_queue.push(tmp_queue);
-        twttr.getUserTimeline({"count": 1}, function(data){
+        twttr.getUserTimeline({"count": 1}, function(tweet_data){
           var system_date = new Date();
-          var tweet_date = data[0] ? new Date(Date.parse(data[0].created_at)) : 0;
+          var tweet_date = tweet_data[0] ? new Date(Date.parse(tweet_data[0].created_at)) : 0;
           since_last = Math.floor((system_date - tweet_date) / 60000);
           if (since_last <= tweet_rate){
-            sendDM(tmp_queue.sender_id, timestamp() + " Queued " + tmp_queue.url);
+            sendDM(tmp_queue.user_id, timestamp() + " Queued " + tmp_queue.url);
             processQueue();
           }else{
             tweetFromQueue();
@@ -222,7 +212,6 @@ initStream();
 // userStream listeners
 userStream.on("connected", function (data) {
   log(timestamp() + " Connected to @" + config.screen_name + ".");
-  sendDM(config.admin_id, timestamp() + " Connected.");
 });
 
 userStream.on("data", function (data) {
@@ -236,9 +225,36 @@ userStream.on("data", function (data) {
   if (data.event) {
     handleEvent(data.event, data);
   }
-  if (data.direct_message) {
-    parseDM(data);
+  if (data.entities && data.entities.hashtags && !data.in_reply_to_status_id_str) {
+    var hashtags = data.entities.hashtags,
+        tags = [];
+    for(var i = 0; i < hashtags.length; i++){
+      tags.push(hashtags[i].text.toLowerCase());
+    }
+    if (tags.indexOf("foo") > -1) {
+      var blob = { message_id: data.id_str,
+                   message_type: "Tweet",
+                   created_at: data.created_at,
+                   user_id: data.user.id_str,
+                   screen_name: data.user.screen_name,
+                   text: data.text };
+      parseMessage(blob);
+    }
   };
+  if (data.direct_message) {
+    if (data.direct_message.sender.id_str === config.admin_id) {
+      if (data.direct_message.text === "queue") {
+        sendDM(data.direct_message.sender.id_str, timestamp() + " " + (tweet_queue.length || 0) + " links queued");
+      }
+    }
+    var blob = { message_id: data.direct_message.id_str,
+                 message_type: "DM",
+                 created_at: data.direct_message.created_at,
+                 user_id: data.direct_message.sender.id_str,
+                 screen_name: data.direct_message.sender.screen_name,
+                 text: data.direct_message.text };
+    parseMessage(blob);
+  }
 });
 
 userStream.on("error", function (error) {
@@ -271,7 +287,6 @@ userStream.on("close", function (error) {
   log(timestamp() + " Closed:");
   log(error);
   log(timestamp() + " Reconnecting...");
-  sendDM(config.admin_id, timestamp() + " Reconnecting...");
   userStream.destroy();
   userStream.stream();
 });
