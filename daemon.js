@@ -181,7 +181,7 @@ function parseMessage (data) {
   if (data.user_id !== config.user_id) {
     log(timestamp() + " " + data.message_type + " from @" + data.screen_name + "(" + data.user_id + ") " + data.message_id);
     if (friends.indexOf(data.user_id) > -1) {
-      urls = parseURLs(data.text);
+      urls = parseURLs(data.text); // TODO: Update this to use URL entities
       urls.forEach(function (url) {
         var tmp_queue = { message_id: data.message_id,
                           created_at: data.created_at,
@@ -231,7 +231,7 @@ userStream.on("data", function (data) {
     for(var i = 0; i < hashtags.length; i++){
       tags.push(hashtags[i].text.toLowerCase());
     }
-    if (tags.indexOf("foo") > -1) {
+    if (tags.indexOf("gif") > -1) {
       var blob = { message_id: data.id_str,
                    message_type: "Tweet",
                    created_at: data.created_at,
