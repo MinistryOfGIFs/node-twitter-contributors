@@ -231,7 +231,7 @@ userStream.on("data", function (data) {
     for(var i = 0; i < user_mentions.length; i++){
       users.push(user_mentions[i].id_str);
     }
-    if (users.length = 1 && users.indexOf(config.user_id) > -1) {
+    if (users.length === 1 && users.indexOf(config.user_id) > -1) {
       var blob = { message_id: data.id_str,
                    message_type: "Tweet",
                    created_at: data.created_at,
@@ -267,7 +267,7 @@ userStream.on("error", function (error) {
 
   reconnectStream(240);
 
-  if (error.type && error.type = 'response') {
+  if (error.type && error.type === 'response') {
     var errorCode = error.data.code;
     switch (errorCode) {
       case "420":
@@ -283,7 +283,7 @@ userStream.on("error", function (error) {
     }
   }
 
-  if (error.type && error.type = 'request') {
+  if (error.type && error.type === 'request') {
     sendDM(config.admin_id, timestamp() + " SOCKET ERROR: Reconnecting in 2 minutes.");
     reconnectStream(240);
   }
@@ -301,7 +301,7 @@ userStream.on("close", function (error) {
 userStream.on("heartbeat", function () {
   clearInterval(heartbeat_timer);
   heartbeatTimer(120);
-  if (show_heartbeat = true) {
+  if (show_heartbeat) {
     console.log(timestamp() + " - --^v--");
   }
 });
