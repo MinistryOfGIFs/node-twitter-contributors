@@ -89,7 +89,7 @@ function sendTweet(status, callback) {
 }
 
 function sendDM(user_id, text) {
-  twttr.newDirectMessage(parseInt(user_id), text, function (data) {
+  twttr.newDirectMessage(parseInt(user_id, 10), text, function (data) {
     if (data.recipient) {
       log(timestamp() + " DM sent to @" + data.recipient.screen_name + ": " + data.text);
     }
@@ -160,7 +160,7 @@ function handleEvent(event, data) {
       log(timestamp() + " Added @" + data.target.screen_name + " to friends.")
     } else {
       // Notify the admin when followed by a user with more than x followers
-      if (parseInt(data.source.followers_count) > 1000) {
+      if (parseInt(data.source.followers_count, 10) > 1000) {
         sendDM(config.admin_id, timestamp() + " Followed by @" + data.source.screen_name + " (" + data.source.followers_count + " followers)");
       };
     }
