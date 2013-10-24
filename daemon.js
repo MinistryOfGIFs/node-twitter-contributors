@@ -30,7 +30,7 @@ function log(message) {
   fs.appendFile(logfile, message + "\n", function (err) {
     if (err) throw err;
     console.log(message);
-  })
+  });
 }
 
 var parseURLregex = /(((https?):\/\/)[\-\w@:%_\+.~#?,&\/\/=]+)/g;
@@ -51,12 +51,12 @@ function expandURLs (urls, cb) {
         expandURL(urls);
       });
     }
-  }
+  };
   expandURL(urls);
 }
 
 function heartbeatTimer(timeout) {
-  timeout = timeout || 0
+  timeout = timeout || 0;
   heartbeat_timer = setInterval(function () {
     if (timeout > 1) {
       timeout--;
@@ -140,7 +140,7 @@ function initStream() {
       log(timestamp() + " Connection failed, retrying in 2 minutes...");
       reconnectStream(120);
     }
-  })
+  });
 }
 
 function reconnectStream(timeout) {
@@ -157,12 +157,12 @@ function handleEvent(event, data) {
     // Handle outgoing follow events for the authed user as well as incoming follows
     if (data.source.id_str === config.user_id) {
       friends.push(data.target.id_str);
-      log(timestamp() + " Added @" + data.target.screen_name + " to friends.")
+      log(timestamp() + " Added @" + data.target.screen_name + " to friends.");
     } else {
       // Notify the admin when followed by a user with more than x followers
       if (parseInt(data.source.followers_count, 10) > 1000) {
         sendDM(config.admin_id, timestamp() + " Followed by @" + data.source.screen_name + " (" + data.source.followers_count + " followers)");
-      };
+      }
     }
   } else if (event === 'unfollow') {
     // This event is only available for the current authed user. This is not received when a user unfollows you.
@@ -170,7 +170,7 @@ function handleEvent(event, data) {
       friends = friends.filter(function (friend) {
         return friend !== data.target.id_str;
       });
-      log(timestamp() + " Removed @" + data.target.screen_name + " from friends.")
+      log(timestamp() + " Removed @" + data.target.screen_name + " from friends.");
     }
   }
 }
@@ -240,7 +240,7 @@ userStream.on("data", function (data) {
                    text: data.text };
       parseMessage(blob);
     }
-  };
+  }
   if (data.direct_message) {
     if (data.direct_message.sender.id_str === config.admin_id) {
       if (data.direct_message.text === "queue") {
