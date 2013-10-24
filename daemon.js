@@ -28,7 +28,7 @@ function timestamp() {
 
 function log(message) {
   fs.appendFile(logfile, message + "\n", function (err) {
-    if (err) throw err;
+    if (err) { throw err; }
     console.log(message);
   });
 }
@@ -45,7 +45,7 @@ function expandURLs (urls, cb) {
       cb(null, expandedURLs);
       } else {
       request({ method: "HEAD", url: urls[expandedURLs.length], followAllRedirects: true }, function(err, response) {
-        if (err) return cb(err);
+        if (err) { return cb(err); }
         // console.log(response.request.response.headers['content-type']);
         expandedURLs.push(response.request.href);
         expandURL(urls);
