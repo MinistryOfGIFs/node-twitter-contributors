@@ -99,7 +99,7 @@ function sendDM(user_id, text) {
 function tweetFromQueue(){
   var url_info = tweet_queue.shift();
   sendTweet(url_info.url, function(tweet_id, tweet_text){
-    msg = timestamp() + " Tweeted https://twitter.com/" + config.screen_name + "/status/" + tweet_id;
+    var msg = timestamp() + " Tweeted https://twitter.com/" + config.screen_name + "/status/" + tweet_id;
     log(msg);
     sendDM(url_info.user_id, msg);
   });
@@ -181,7 +181,7 @@ function parseMessage (data) {
   if (data.user_id !== config.user_id) {
     log(timestamp() + " " + data.message_type + " from @" + data.screen_name + "(" + data.user_id + ") " + data.message_id);
     if (friends.indexOf(data.user_id) > -1) {
-      urls = parseURLs(data.text);
+      var urls = parseURLs(data.text);
       urls.forEach(function (url) {
         var tmp_queue = { message_id: data.message_id,
                           created_at: data.created_at,
@@ -193,7 +193,7 @@ function parseMessage (data) {
         twttr.getUserTimeline({"count": 1}, function(tweet_data){
           var system_date = new Date();
           var tweet_date = tweet_data[0] ? new Date(Date.parse(tweet_data[0].created_at)) : 0;
-          since_last = Math.floor((system_date - tweet_date) / 60000);
+          var since_last = Math.floor((system_date - tweet_date) / 60000);
           if (since_last <= tweet_rate){
             sendDM(tmp_queue.user_id, timestamp() + " Queued " + tmp_queue.url);
             processQueue();
