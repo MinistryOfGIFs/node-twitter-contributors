@@ -116,7 +116,6 @@ function processQueue(){
         tweetFromQueue();
       }
     }, tweet_rate * 60e3);
-  }else{
   }
 }
 
