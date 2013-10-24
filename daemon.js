@@ -89,9 +89,12 @@ function sendTweet(status, callback) {
 }
 
 function sendDM(user_id, text) {
-  twttr.newDirectMessage(parseInt(user_id, 10), text, function (data) {
+  console.log("DM: " + text);
+  twttr.newDirectMessage({user_id: user_id}, text, function (data) {
     if (data.recipient) {
       log(timestamp() + " DM sent to @" + data.recipient.screen_name + ": " + data.text);
+    } else if (data.statusCode) {
+      log(timestamp() + " DM error: " + data.statusCode + ": " + data.message);
     }
   });
 }
@@ -194,6 +197,7 @@ function parseMessage (data) {
           var tweet_date = tweet_data[0] ? new Date(Date.parse(tweet_data[0].created_at)) : 0;
           var since_last = Math.floor((system_date - tweet_date) / 60000);
           if (since_last <= tweet_rate){
+            console.log('queued');
             sendDM(tmp_queue.user_id, timestamp() + " Queued " + tmp_queue.url);
             processQueue();
           }else{
@@ -231,13 +235,13 @@ userStream.on("data", function (data) {
       users.push(user_mentions[i].id_str);
     }
     if (users.length === 1 && users.indexOf(config.user_id) > -1) {
-      var blob1 = { message_id: data.id_str,
+      var tweet_data = { message_id: data.id_str,
                    message_type: "Tweet",
                    created_at: data.created_at,
                    user_id: data.user.id_str,
                    screen_name: data.user.screen_name,
                    text: data.text };
-      parseMessage(blob1);
+      parseMessage(tweet_data);
     }
   }
   if (data.direct_message) {
@@ -246,13 +250,13 @@ userStream.on("data", function (data) {
         sendDM(data.direct_message.sender.id_str, timestamp() + " " + (tweet_queue.length || 0) + " links queued");
       }
     }
-    var blob2 = { message_id: data.direct_message.id_str,
+    var dm_data = { message_id: data.direct_message.id_str,
                  message_type: "DM",
                  created_at: data.direct_message.created_at,
                  user_id: data.direct_message.sender.id_str,
                  screen_name: data.direct_message.sender.screen_name,
                  text: data.direct_message.text };
-    parseMessage(blob2);
+    parseMessage(dm_data);
   }
 });
 
