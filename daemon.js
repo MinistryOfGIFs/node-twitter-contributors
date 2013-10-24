@@ -146,7 +146,7 @@ function initStream() {
 function reconnectStream(timeout) {
   // Kill current connection and reconnect
   timeout = timeout || 0;
-  reconnect_timer = setTimeout(function () {
+  setTimeout(function () {
     userStream.destroy();
     initStream();
   }, timeout * 1000);
