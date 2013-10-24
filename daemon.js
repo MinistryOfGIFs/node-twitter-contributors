@@ -115,7 +115,7 @@ function processQueue(){
       }else{
         tweetFromQueue();
       }
-    }, tweet_rate * 60000);
+    }, tweet_rate * 60e3);
   }else{
   }
 }
