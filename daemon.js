@@ -89,7 +89,6 @@ function sendTweet(status, callback) {
 }
 
 function sendDM(user_id, text) {
-  console.log("DM: " + text);
   twttr.newDirectMessage({user_id: user_id}, text, function (data) {
     if (data.recipient) {
       log(timestamp() + " DM sent to @" + data.recipient.screen_name + ": " + data.text);
