@@ -181,7 +181,7 @@ function parseMessage (data) {
   if (data.user_id !== config.user_id) {
     log(timestamp() + " " + data.message_type + " from @" + data.screen_name + "(" + data.user_id + ") " + data.message_id);
     if (friends.indexOf(data.user_id) > -1) {
-      urls = parseURLs(data.text); // TODO: Update this to use URL entities
+      urls = parseURLs(data.text);
       urls.forEach(function (url) {
         var tmp_queue = { message_id: data.message_id,
                           created_at: data.created_at,
@@ -225,13 +225,13 @@ userStream.on("data", function (data) {
   if (data.event) {
     handleEvent(data.event, data);
   }
-  if (data.entities && data.entities.hashtags && !data.in_reply_to_status_id_str) {
-    var hashtags = data.entities.hashtags,
-        tags = [];
-    for(var i = 0; i < hashtags.length; i++){
-      tags.push(hashtags[i].text.toLowerCase());
+  if (data.entities && data.entities.hashtags && !data.in_reply_to_status_id_str && !data.retweeted) {
+    var user_mentions = data.entities.user_mentions,
+        users = [];
+    for(var i = 0; i < user_mentions.length; i++){
+      users.push(user_mentions[i].id_str);
     }
-    if (tags.indexOf("gif") > -1) {
+    if (users.length = 1 && users.indexOf(config.user_id) > -1) {
       var blob = { message_id: data.id_str,
                    message_type: "Tweet",
                    created_at: data.created_at,
@@ -258,10 +258,17 @@ userStream.on("data", function (data) {
 });
 
 userStream.on("error", function (error) {
-  log(timestamp() + " Error:\n" + util.inspect(error, {depth:null}));
 
-  if (error[type] = 'response') {
-    var errorCode = error[data][code];
+  if (!error.type) {
+    // Temporary debug statements until I get this damn thing working properly...
+    console.log("###### ERROR TYPE MISSING ######");
+    console.log(util.inspect(error, {depth:null}));
+  }
+
+  reconnectStream(240);
+
+  if (error.type && error.type = 'response') {
+    var errorCode = error.data.code;
     switch (errorCode) {
       case "420":
         sendDM(config.admin_id, timestamp() + " ERROR 420: Rate limited, Reconnecting in 10 minutes.");
@@ -276,7 +283,7 @@ userStream.on("error", function (error) {
     }
   }
 
-  if (error[type] = 'request') {
+  if (error.type && error.type = 'request') {
     sendDM(config.admin_id, timestamp() + " SOCKET ERROR: Reconnecting in 2 minutes.");
     reconnectStream(240);
   }
