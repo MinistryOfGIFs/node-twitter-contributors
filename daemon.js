@@ -41,7 +41,7 @@ function parseURLs(text) {
 function expandURLs (urls, cb) {
   var expandedURLs = [];
   var expandURL = function(urls) {
-    if (expandedURLs.length == urls.length) {
+    if (expandedURLs.length === urls.length) {
       cb(null, expandedURLs);
       } else {
       request({ method: "HEAD", url: urls[expandedURLs.length], followAllRedirects: true }, function(err, response) {
