@@ -13,8 +13,16 @@ var util = require("util"),
     heartbeat_timer = null,
     tweet_rate = 15, // Minutes between Tweets
     queue_timer = {},
-    processing_queue = 0;
+    processing_queue = 0,
+    reconnecting = 0;
 
+var errorCodes = {
+  "403": { message: " ERROR 403: Forbidden", reconnectTimeout: 240 },
+  "420": { message: " ERROR 420: Enhance Your Calm", reconnectTimeout: 600 },
+  "429": { message: " ERROR 429: Too Many Requests", reconnectTimeout: 900 },
+  "503": { message: " ERROR 503: Service Unavailable", reconnectTimeout: 240 },
+  "default": { message: " ERROR ", reconnectTimeout: 240 }
+};
 // Misc helpers
 
 function timestamp() {
@@ -56,14 +64,15 @@ function expandURLs (urls, cb) {
 }
 
 function heartbeatTimer(timeout) {
+  if ( reconnecting = 1 ) { return }
   timeout = timeout || 0;
   heartbeat_timer = setInterval(function () {
     if (timeout > 1) {
       timeout--;
     } else {
-      log(timestamp() + " Heartbeat timed out, reconnecting...");
+      log(timestamp() + " Heartbeat timed out, reconnecting in 4 minutes");
       clearInterval(heartbeat_timer);
-      reconnectStream();
+      reconnectStream(240);
     }
   }, 1000);
 }
@@ -89,7 +98,8 @@ function sendTweet(status, callback) {
 }
 
 function sendDM(user_id, text) {
-  twttr.newDirectMessage({user_id: user_id}, text, function (data) {
+  twttr.newDirectMessage(parseInt(user_id, 10), text, function (data) {
+// twttr.newDirectMessage({user_id: user_id}, text, function (data) {
     if (data.recipient) {
       log(timestamp() + " DM sent to @" + data.recipient.screen_name + ": " + data.text);
     } else if (data.statusCode) {
@@ -100,6 +110,7 @@ function sendDM(user_id, text) {
 
 function tweetFromQueue(){
   var url_info = tweet_queue.shift();
+  console.log(util.inspect(url_info));
   sendTweet(url_info.url, function(tweet_id, tweet_text){
     var msg = timestamp() + " Tweeted https://twitter.com/" + config.screen_name + "/status/" + tweet_id;
     log(msg);
@@ -135,11 +146,26 @@ function initStream() {
   twttr.verifyCredentials(function (data) {
     if (data.id_str) {
       userStream.stream();
+      reconnecting = 0;
       heartbeatTimer(120);
+    } else if (data.statusCode) {
+      log(timestamp() + " Connection error: " + data.statusCode + ": " + data.message);
+      var errorCode = data.statusCode;
+      if (errorCodes[errorCode]){
+        log(timestamp() + errorCodes[errorCode].message);
+        sendDM(config.admin_id, timestamp() + errorCodes[errorCode].message);
+        reconnectStream(errorCodes[errorCode].reconnectTimeout);
+      } else {
+        log(timestamp() + errorCodes["default"].message);
+        log(util.inspect(error, {depth:null}));
+        sendDM(config.admin_id, timestamp() + errorCodes["default"].message + errorCode);
+        reconnectStream(errorCodes["default"].reconnectTimeout);
+      }
     } else {
-      log(timestamp() + " Error\n" + util.inspect(data, {depth:null}));
-      log(timestamp() + " Connection failed, retrying in 2 minutes...");
-      reconnectStream(120);
+      console.log(timestamp() + "### ERROR ###");
+      console.log(timestamp() + util.inspect(data, {depth:null}));
+      console.log(timestamp() + " Connection failed, retrying in 4 minutes...");
+      reconnectStream(240);
     }
   });
 }
@@ -147,8 +173,9 @@ function initStream() {
 function reconnectStream(timeout) {
   // Kill current connection and reconnect
   timeout = timeout || 0;
+  reconnecting = 1;
+  userStream.destroy();
   setTimeout(function () {
-    userStream.destroy();
     initStream();
   }, timeout * 1000);
 }
@@ -177,11 +204,11 @@ function handleEvent(event, data) {
 }
 
 function parseMessage (data) {
-  // Handle incoming DMs
-
+  // Handle incoming Tweets and DMs
+  console.log(util.inspect(data));
   if (data.user_id !== config.user_id) {
-    log(timestamp() + " " + data.message_type + " from @" + data.screen_name + "(" + data.user_id + ") " + data.message_id);
     if (friends.indexOf(data.user_id) > -1) {
+      log(timestamp() + " " + data.message_type + " from @" + data.screen_name + "(" + data.user_id + ") " + data.message_id);
       var urls = parseURLs(data.text);
       urls.forEach(function (url) {
         var tmp_queue = { message_id: data.message_id,
@@ -196,7 +223,6 @@ function parseMessage (data) {
           var tweet_date = tweet_data[0] ? new Date(Date.parse(tweet_data[0].created_at)) : 0;
           var since_last = Math.floor((system_date - tweet_date) / 60000);
           if (since_last <= tweet_rate){
-            console.log('queued');
             sendDM(tmp_queue.user_id, timestamp() + " Queued " + tmp_queue.url);
             processQueue();
           }else{
@@ -266,38 +292,34 @@ userStream.on("error", function (error) {
     console.log("###### ERROR TYPE MISSING ######");
     console.log(util.inspect(error, {depth:null}));
   }
-
-  reconnectStream(240);
+  console.log(util.inspect(error, {depth:null}));
 
   if (error.type && error.type === 'response') {
     var errorCode = error.data.code;
-    switch (errorCode) {
-      case "420":
-        sendDM(config.admin_id, timestamp() + " ERROR 420: Rate limited, Reconnecting in 10 minutes.");
-        reconnectStream(600);
-        break;
-      case "503":
-        sendDM(config.admin_id, timestamp() + " ERROR 503: Reconnecting in 2 minutes.");
-        reconnectStream(240);
-        break;
-      default:
-        sendDM(config.admin_id, timestamp() + " ERROR: " + errorCode);
+    if (errorCodes[errorCode]){
+      log(timestamp() + errorCodes[errorCode].message);
+      sendDM(config.admin_id, timestamp() + errorCodes[errorCode].message);
+      reconnectStream(errorCodes[errorCode].reconnectTimeout);        
+    } else {
+      log(timestamp() + errorCodes.default.message);
+      log(util.inspect(error, {depth:null}));
+      sendDM(config.admin_id, timestamp() + errorCodes.default.message + errorCode);
+      reconnectStream(errorCodes.default.reconnectTimeout);        
     }
   }
 
   if (error.type && error.type === 'request') {
-    sendDM(config.admin_id, timestamp() + " SOCKET ERROR: Reconnecting in 2 minutes.");
-    reconnectStream(240);
+    sendDM(config.admin_id, timestamp() + " SOCKET ERROR: Reconnecting in 4 minutes.");
+    reconnectStream(480);
   }
 
 });
 
 userStream.on("close", function (error) {
   log(timestamp() + " Closed:");
-  log(error);
+  log(util.inspect(error, {depth:null}));
   log(timestamp() + " Reconnecting...");
-  userStream.destroy();
-  userStream.stream();
+  reconnectStream(480);
 });
 
 userStream.on("heartbeat", function () {
