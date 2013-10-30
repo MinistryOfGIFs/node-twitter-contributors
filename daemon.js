@@ -207,30 +207,28 @@ function parseMessage (data) {
   // Handle incoming Tweets and DMs
   console.log(util.inspect(data));
   if (data.user_id !== config.user_id) {
-    if (friends.indexOf(data.user_id) > -1) {
-      log(timestamp() + " " + data.message_type + " from @" + data.screen_name + "(" + data.user_id + ") " + data.message_id);
-      var urls = parseURLs(data.text);
-      urls.forEach(function (url) {
-        var tmp_queue = { message_id: data.message_id,
-                          created_at: data.created_at,
-                          user_id: data.user_id,
-                          screen_name: data.screen_name,
-                          text: data.text,
-                          url: url };
-        tweet_queue.push(tmp_queue);
-        twttr.getUserTimeline({"count": 1}, function(tweet_data){
-          var system_date = new Date();
-          var tweet_date = tweet_data[0] ? new Date(Date.parse(tweet_data[0].created_at)) : 0;
-          var since_last = Math.floor((system_date - tweet_date) / 60000);
-          if (since_last <= tweet_rate){
-            sendDM(tmp_queue.user_id, timestamp() + " Queued " + tmp_queue.url);
-            processQueue();
-          }else{
-            tweetFromQueue();
-          }
-        });
+    log(timestamp() + " " + data.message_type + " from @" + data.screen_name + "(" + data.user_id + ") " + data.message_id);
+    var urls = parseURLs(data.text);
+    urls.forEach(function (url) {
+      var tmp_queue = { message_id: data.message_id,
+                        created_at: data.created_at,
+                        user_id: data.user_id,
+                        screen_name: data.screen_name,
+                        text: data.text,
+                        url: url };
+      tweet_queue.push(tmp_queue);
+      twttr.getUserTimeline({"count": 1}, function(tweet_data){
+        var system_date = new Date();
+        var tweet_date = tweet_data[0] ? new Date(Date.parse(tweet_data[0].created_at)) : 0;
+        var since_last = Math.floor((system_date - tweet_date) / 60000);
+        if (since_last <= tweet_rate){
+          sendDM(tmp_queue.user_id, timestamp() + " Queued " + tmp_queue.url);
+          processQueue();
+        }else{
+          tweetFromQueue();
+        }
       });
-    }
+    });
   }
 }
 
@@ -253,7 +251,8 @@ userStream.on("data", function (data) {
   if (data.event) {
     handleEvent(data.event, data);
   }
-  if (data.entities && data.entities.hashtags && !data.in_reply_to_status_id_str && !data.retweeted) {
+
+  if (data.entities && data.entities.hashtags && !data.in_reply_to_status_id_str && !data.retweeted && friends.indexOf(data.user.id_str) > -1) {
     var user_mentions = data.entities.user_mentions,
         users = [];
     for(var i = 0; i < user_mentions.length; i++){
@@ -269,7 +268,7 @@ userStream.on("data", function (data) {
       parseMessage(tweet_data);
     }
   }
-  if (data.direct_message) {
+  if (data.direct_message && friends.indexOf(data.direct_message.sender.id_str) > -1) {
     if (data.direct_message.sender.id_str === config.admin_id) {
       if (data.direct_message.text === "queue") {
         sendDM(data.direct_message.sender.id_str, timestamp() + " " + (tweet_queue.length || 0) + " links queued");
