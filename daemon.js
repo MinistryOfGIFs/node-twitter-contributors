@@ -11,7 +11,7 @@ var util = require("util"),
     tweet_queue = [],
     show_heartbeat = true, // logs '--^v--' to stdout only
     heartbeat_timer = null,
-    tweet_rate = 15, // Minutes between Tweets
+    tweet_rate = 30, // Minutes between Tweets
     queue_timer = {},
     processing_queue = 0,
     reconnecting = 0;
@@ -251,8 +251,7 @@ userStream.on("data", function (data) {
   if (data.event) {
     handleEvent(data.event, data);
   }
-
-  if (data.entities && data.entities.hashtags && !data.in_reply_to_status_id_str && !data.retweeted && friends.indexOf(data.user.id_str) > -1) {
+  if (data.entities && !data.in_reply_to_status_id_str && !data.retweeted_status && friends.indexOf(data.user.id_str) > -1) {
     var user_mentions = data.entities.user_mentions,
         users = [];
     for(var i = 0; i < user_mentions.length; i++){
