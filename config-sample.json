@@ -1,20 +1,40 @@
 {
   "prod": {
-    "screen_name": "@username",
-    "user_id": "<id of the account to control>",
-    "admin_id": "<id of the account that will receive errors in production>",
-    "consumer_key": "XXX",
-    "consumer_secret": "XXX",
-    "oauth_token": "XXX",
-    "oauth_secret": "XXX"
+    "twitter": {
+      "screen_name": "<main username>",
+      "user_id": "<id of the account to control>",
+      "admin_id": "<id of the account that will receive errors and notices>",
+      "consumer_key": "xxx",
+      "consumer_secret": "xxx",
+      "oauth_token": "xxx",
+      "oauth_secret": "xxx"
+    },
+    "tumblr": {
+      "blog_name": "blog",
+      "blog_url": "blog.tumblr.com",
+      "consumer_key": "xxx",
+      "consumer_secret": "xxx",
+      "oauth_token": "xxx",
+      "oauth_secret": "xxx"
+    }
   },
   "dev": {
-    "screen_name": "@username_dev",
-    "user_id": "<id of the account to control>",
-    "admin_id": "<id of the account that will receive errors during development>",
-    "consumer_key": "XXX",
-    "consumer_secret": "XXX",
-    "oauth_token": "XXX",
-    "oauth_secret": "XXX"
+    "twitter": {
+      "screen_name": "<dev username>",
+      "user_id": "<id of the account to control during development>",
+      "admin_id": "<id of the account that will receive errors and notices during development>",
+      "consumer_key": "xxx",
+      "consumer_secret": "xxx",
+      "oauth_token": "xxx",
+      "oauth_secret": "xxx"
+    },
+    "tumblr": {
+      "blog_name": "blog-test",
+      "blog_url": "blog-test.tumblr.com",
+      "consumer_key": "xxx",
+      "consumer_secret": "xxx",
+      "oauth_token": "xxx",
+      "oauth_secret": "xxx"
+    }
   }
 }

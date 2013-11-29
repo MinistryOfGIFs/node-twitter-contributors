@@ -1,12 +1,13 @@
 var util = require("util"),
     twitter = require("twitter"),
+    Tumblr = require("tumblrwks"),
+    request = require('request'),
     Stream = require("user-stream"),
     fs = require('fs'),
-    request = require('request'),
-    environment = "dev", // 'dev' for development or 'prod' for production
+    environment = "prod", // 'dev' for development or 'prod' for production
     config_file = require("./config.json"), // See config-sample.json
     config = config_file[environment],
-    logfile = "./logs/" + config.screen_name + "-log.txt", // name of the file you want log messages to output to
+    logfile = "./logs/" + config.twitter.screen_name + "-log.txt", // name of the file you want log messages to output to
     friends = [], // Users this account follows, populated when the 'friends' event is streamed on connection
     tweet_queue = [],
     show_heartbeat = true, // logs '--^v--' to stdout only
@@ -80,12 +81,21 @@ function heartbeatTimer(timeout) {
 // twttr setup and helpers
 
 var twttr = new twitter({
-  consumer_key: config.consumer_key,
-  consumer_secret: config.consumer_secret,
-  access_token_key: config.oauth_token,
-  access_token_secret: config.oauth_secret,
+  consumer_key: config.twitter.consumer_key,
+  consumer_secret: config.twitter.consumer_secret,
+  access_token_key: config.twitter.oauth_token,
+  access_token_secret: config.twitter.oauth_secret,
   rest_base: "https://api.twitter.com/1.1"
 });
+
+var tumblr = new Tumblr(
+  {
+    consumerKey: config.tumblr.consumer_key,
+    consumerSecret: config.tumblr.consumer_secret,
+    accessToken: config.tumblr.oauth_token,
+    accessSecret: config.tumblr.oauth_secret
+
+  }, config.tumblr.blog_name + ".tumblr.com");
 
 function sendTweet(status, callback) {
   twttr.updateStatus(status,
@@ -108,14 +118,21 @@ function sendDM(user_id, text) {
   });
 }
 
-function tweetFromQueue(){
+function postFromQueue(){
   var url_info = tweet_queue.shift();
-  console.log(util.inspect(url_info));
-  sendTweet(url_info.url, function(tweet_id, tweet_text){
-    var msg = timestamp() + " Tweeted https://twitter.com/" + config.screen_name + "/status/" + tweet_id;
-    log(msg);
-    sendDM(url_info.user_id, msg);
+  tumblr.post('/post', {
+    type: 'text',
+    title: "#", // I don't like the permalink format, this negates them
+    body: "<a href=\"" + url_info.url + "\" target=\"_blank\"><img src=\"" + url_info.url + "\" class=\"inline-tweet-media\"/></a><br/><a href=\"" + url_info.url + "\">Source</a>"
+  }, function(err, post_data){
+    var post_url = "http://" + config.tumblr.blog_url + "/post/" + post_data.id;
+    sendTweet(post_url, function(tweet_id, tweet_text){
+      var msg = timestamp() + " Tweeted https://twitter.com/" + config.twitter.screen_name + "/status/" + tweet_id;
+      log(msg);
+      sendDM(url_info.user_id, msg);
+    });
   });
+
 }
 
 function processQueue(){
@@ -126,7 +143,7 @@ function processQueue(){
         processing_queue = 0;
         clearInterval(queue_timer);
       }else{
-        tweetFromQueue();
+        postFromQueue();
       }
     }, tweet_rate * 60e3);
   }
@@ -135,10 +152,10 @@ function processQueue(){
 // userStream setup and helpers
 
 var userStream = new Stream({
-  consumer_key: config.consumer_key,
-  consumer_secret: config.consumer_secret,
-  access_token_key: config.oauth_token,
-  access_token_secret: config.oauth_secret,
+  consumer_key: config.twitter.consumer_key,
+  consumer_secret: config.twitter.consumer_secret,
+  access_token_key: config.twitter.oauth_token,
+  access_token_secret: config.twitter.oauth_secret,
 });
 
 function initStream() {
@@ -153,12 +170,12 @@ function initStream() {
       var errorCode = data.statusCode;
       if (errorCodes[errorCode]){
         log(timestamp() + errorCodes[errorCode].message);
-        sendDM(config.admin_id, timestamp() + errorCodes[errorCode].message);
+        sendDM(config.twitter.admin_id, timestamp() + errorCodes[errorCode].message);
         reconnectStream(errorCodes[errorCode].reconnectTimeout);
       } else {
         log(timestamp() + errorCodes["default"].message);
         log(util.inspect(error, {depth:null}));
-        sendDM(config.admin_id, timestamp() + errorCodes["default"].message + errorCode);
+        sendDM(config.twitter.admin_id, timestamp() + errorCodes["default"].message + errorCode);
         reconnectStream(errorCodes["default"].reconnectTimeout);
       }
     } else {
@@ -183,18 +200,18 @@ function reconnectStream(timeout) {
 function handleEvent(event, data) {
   if (event === 'follow') {
     // Handle outgoing follow events for the authed user as well as incoming follows
-    if (data.source.id_str === config.user_id) {
+    if (data.source.id_str === config.twitter.user_id) {
       friends.push(data.target.id_str);
       log(timestamp() + " Added @" + data.target.screen_name + " to friends.");
     } else {
       // Notify the admin when followed by a user with more than x followers
       if (parseInt(data.source.followers_count, 10) > 1000) {
-        sendDM(config.admin_id, timestamp() + " Followed by @" + data.source.screen_name + " (" + data.source.followers_count + " followers)");
+        sendDM(config.twitter.admin_id, timestamp() + " Followed by @" + data.source.screen_name + " (" + data.source.followers_count + " followers)");
       }
     }
   } else if (event === 'unfollow') {
     // This event is only available for the current authed user. This is not received when a user unfollows you.
-    if (data.source.id_str === config.user_id) {
+    if (data.source.id_str === config.twitter.user_id) {
       friends = friends.filter(function (friend) {
         return friend !== data.target.id_str;
       });
@@ -206,7 +223,7 @@ function handleEvent(event, data) {
 function parseMessage (data) {
   // Handle incoming Tweets and DMs
   console.log(util.inspect(data));
-  if (data.user_id !== config.user_id) {
+  if (data.user_id !== config.twitter.user_id) {
     log(timestamp() + " " + data.message_type + " from @" + data.screen_name + "(" + data.user_id + ") " + data.message_id);
     var urls = parseURLs(data.text);
     urls.forEach(function (url) {
@@ -225,7 +242,7 @@ function parseMessage (data) {
           sendDM(tmp_queue.user_id, timestamp() + " Queued " + tmp_queue.url);
           processQueue();
         }else{
-          tweetFromQueue();
+          postFromQueue();
         }
       });
     });
@@ -237,13 +254,13 @@ initStream();
 
 // userStream listeners
 userStream.on("connected", function (data) {
-  log(timestamp() + " Connected to @" + config.screen_name + ".");
+  log(timestamp() + " Connected to @" + config.twitter.screen_name + ".");
 });
 
 userStream.on("data", function (data) {
   if (data.warning) {
     log(timestamp() + " WARNING");
-    sendDM(config.admin_id, timestamp() + " WARNING: [" + data.code + "] " + data.message);
+    sendDM(config.twitter.admin_id, timestamp() + " WARNING: [" + data.code + "] " + data.message);
   }
   if (data.friends) {
     friends = data.friends.map(String); // TODO: Update this for 64bit user IDs
@@ -257,18 +274,18 @@ userStream.on("data", function (data) {
     for(var i = 0; i < user_mentions.length; i++){
       users.push(user_mentions[i].id_str);
     }
-    if (users.length === 1 && users.indexOf(config.user_id) > -1) {
+    if (users.length === 1 && users.indexOf(config.twitter.user_id) > -1) {
       var tweet_data = { message_id: data.id_str,
                    message_type: "Tweet",
                    created_at: data.created_at,
                    user_id: data.user.id_str,
                    screen_name: data.user.screen_name,
-                   text: data.text };
+                   text: data.entities.urls[0].expanded_url };
       parseMessage(tweet_data);
     }
   }
   if (data.direct_message && friends.indexOf(data.direct_message.sender.id_str) > -1) {
-    if (data.direct_message.sender.id_str === config.admin_id) {
+    if (data.direct_message.sender.id_str === config.twitter.admin_id) {
       if (data.direct_message.text === "queue") {
         sendDM(data.direct_message.sender.id_str, timestamp() + " " + (tweet_queue.length || 0) + " links queued");
       }
@@ -296,18 +313,18 @@ userStream.on("error", function (error) {
     var errorCode = error.data.code;
     if (errorCodes[errorCode]){
       log(timestamp() + errorCodes[errorCode].message);
-      sendDM(config.admin_id, timestamp() + errorCodes[errorCode].message);
+      sendDM(config.twitter.admin_id, timestamp() + errorCodes[errorCode].message);
       reconnectStream(errorCodes[errorCode].reconnectTimeout);        
     } else {
       log(timestamp() + errorCodes.default.message);
       log(util.inspect(error, {depth:null}));
-      sendDM(config.admin_id, timestamp() + errorCodes.default.message + errorCode);
+      sendDM(config.twitter.admin_id, timestamp() + errorCodes.default.message + errorCode);
       reconnectStream(errorCodes.default.reconnectTimeout);        
     }
   }
 
   if (error.type && error.type === 'request') {
-    sendDM(config.admin_id, timestamp() + " SOCKET ERROR: Reconnecting in 4 minutes.");
+    sendDM(config.twitter.admin_id, timestamp() + " SOCKET ERROR: Reconnecting in 4 minutes.");
     reconnectStream(480);
   }
 

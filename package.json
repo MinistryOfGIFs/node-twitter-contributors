@@ -19,7 +19,8 @@
     "util": "0.4.9",
     "request": "2.27.0",
     "user-stream": "0.0.5",
-    "twitter": "0.2.3"
+    "twitter": "0.2.3",
+    "tumblrwks": "0.2.0"
   }
 }
 
