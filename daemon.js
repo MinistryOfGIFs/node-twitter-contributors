@@ -127,7 +127,7 @@ function postFromQueue(){
   }, function(err, post_data){
     var post_url = "http://" + config.tumblr.blog_url + "/post/" + post_data.id;
     sendTweet(url_info.url, function(tweet_id, tweet_text){
-      var msg = timestamp() + " Tweeted https://twitter.com/" + config.twitter.screen_name + "/status/" + tweet_id;
+      var msg = timestamp() + "\nTweeted https://twitter.com/" + config.twitter.screen_name + "/status/" + tweet_id + "\nPosted to blog: " + post_url;
       log(msg);
       sendDM(url_info.user_id, msg);
     });
