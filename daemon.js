@@ -126,7 +126,7 @@ function postFromQueue(){
     body: "<a href=\"" + url_info.url + "\" target=\"_blank\"><img src=\"" + url_info.url + "\" class=\"inline-tweet-media\"/></a><br/><a href=\"" + url_info.url + "\">Source</a>"
   }, function(err, post_data){
     var post_url = "http://" + config.tumblr.blog_url + "/post/" + post_data.id;
-    sendTweet(post_url, function(tweet_id, tweet_text){
+    sendTweet(url_info.url, function(tweet_id, tweet_text){
       var msg = timestamp() + " Tweeted https://twitter.com/" + config.twitter.screen_name + "/status/" + tweet_id;
       log(msg);
       sendDM(url_info.user_id, msg);
