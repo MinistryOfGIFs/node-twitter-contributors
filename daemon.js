@@ -275,12 +275,13 @@ userStream.on("data", function (data) {
       users.push(user_mentions[i].id_str);
     }
     if (users.length === 1 && users.indexOf(config.twitter.user_id) > -1) {
+      var tweet_url = (data.entities.urls[0] = undefined ? data.entities.urls[0].expanded_url : data.text)
       var tweet_data = { message_id: data.id_str,
                    message_type: "Tweet",
                    created_at: data.created_at,
                    user_id: data.user.id_str,
                    screen_name: data.user.screen_name,
-                   text: data.entities.urls[0].expanded_url };
+                   text: tweet_url };
       parseMessage(tweet_data);
     }
   }
