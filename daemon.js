@@ -8,7 +8,7 @@ var util             = require("util"),
     tumblr_actions   = require("./tumblr_actions.js"),
     request          = require('request'),
     Stream           = require("user-stream"),
-    friends          = [], // Users this account follows, populated when the 'friends' event is streamed on connection
+    friends          = [], // Users this account follows, populated when the 'friends' event is emitted on connection
     show_heartbeat   = true, // logs '--^v--' to stdout only
     heartbeat_timer  = null,
     tweet_rate       = 30, // Minutes between Tweets
@@ -46,7 +46,7 @@ function expandURLs (urls, cb) {
 }
 
 function heartbeatTimer(timeout) {
-  if ( reconnecting = 1 ) { return }
+  if ( reconnecting === 1 ) { return }
   timeout = timeout || 0;
   heartbeat_timer = setInterval(function () {
     if (timeout > 1) {
@@ -146,7 +146,7 @@ function initStream() {
 
 function reconnectStream(timeout) {
   // Kill current connection and reconnect
-  timeout = timeout || 0;
+  timeout = timeout || 120;
   reconnecting = 1;
   userStream.destroy();
   setTimeout(function () {
@@ -176,20 +176,24 @@ function handleEvent(event, data) {
     }
   } else if (event === 'favorite') {
     db.get("tweet_id", data.target_object.id_str, function(result){
-      if(result.length > 0){
-        db.update("favs","favs+1", result[0].record_id);
+      if(result.length > 0 ){
+        var updateVals = {"favs": "favs+1"};
+        db.update(updateVals, result[0].record_id);
         logger.log(logger.timestamp() + " @" + data.source.screen_name + " faved " + data.target_object.id_str);
         var fav_count = (result[0].favs+1);
-        if(fav_count % 10 == 0){
+        if((fav_count % 10 == 0) && (fav_count != result[0].last_alert)){
           var msg = logger.timestamp() + " Your post recieved " + fav_count + " favs: https://twitter.com/" + config.twitter.screen_name + "/status/" + result[0].tweet_id;
           twitter.dm(result[0].user_id, msg);
+          var updateVals = {"last_alert": fav_count};
+          db.update(updateVals, result[0].record_id);
         }
       }
     });
   } else if (event === 'unfavorite') {
     db.get("tweet_id", data.target_object.id_str, function(result){
       if(result.length > 0){
-        db.update("favs","favs-1", result[0].record_id);
+        updateVals = {"favs": "favs-1"};
+        db.update(updateVals, result[0].record_id);
         logger.log(logger.timestamp() + " @" + data.source.screen_name + " unfaved " + data.target_object.id_str);
       }
     });
@@ -202,7 +206,7 @@ function parseMessage (data) {
     logger.log(logger.timestamp() + " " + data.message_type + " from @" + data.screen_name + "(" + data.user_id + ") " + data.message_id);
     var urls = parseURLs(data.text);
     urls.forEach(function (url) {
-      db.insert([null, data.message_id, data.user_id, data.screen_name, data.text, url, null, null, 0, 0, logger.epochTimestamp(), 0, 0], function(record_id){
+      db.insert([null, data.message_id, data.user_id, data.screen_name, data.text, url, null, null, 0, 0, 0, logger.epochTimestamp(), 0, 0], function(record_id){
         db.getLastPosted(function(result){
           var system_date = Date.now();
           var last_post = result.length > 0 ? result[0].posted_at : 0;
@@ -261,13 +265,42 @@ userStream.on("data", function (data) {
   }
   if (data.direct_message && friends.indexOf(data.direct_message.sender.id_str) > -1) {
     if (data.direct_message.sender.id_str === config.twitter.admin_id) {
-      if (data.direct_message.text === "queue") {
+      var message = data.direct_message.text;
+      var delete_command = /[dD]elete+ \d+/;
+      if (message === "queue") {
         db.get("queue_state", 0, function(tweet_queue){
-          typeof data.direct_message.sender.id_str;
           twitter.dm(data.direct_message.sender.id_str, logger.timestamp() + " " + (tweet_queue.length || 0) + " links queued");
         });
-      }
-    }
+      };
+      if(message.match(delete_command)){
+        var item_pattern = /\d+/;
+        var item_id = message.match(item_pattern)[0];
+        var type = (item_id.length > 10 ? "tweet_id" : "rowid");
+        db.get(type, item_id, function(res){
+          if (res[0].user_id !== data.direct_message.sender.id_str){
+            twitter.dm(data.direct_message.sender.id_str, logger.timestamp() + " You're not authorized to delete " + item_id);
+            return;
+          }
+          if (res.length > 0) {
+            var record = res[0];
+            if (record.queue_state === 0) {
+              updateVals = { "queue_state": 2 };
+              db.update(updateVals, record.record_id);
+              logger.log(logger.timestamp() + " Removed " + item_id + " from queue");
+              twitter.dm(data.direct_message.sender.id_str, logger.timestamp() + " Removed " + item_id + " from queue");
+            };
+            if (record.queue_state === 1) {
+              twitter.delete(record.tweet_id, function(res){
+                logger.log(logger.timestamp() + " Deleted Tweet " + record.tweet_id);
+                twitter.dm(data.direct_message.sender.id_str, logger.timestamp() + " Deleted Tweet " + record.tweet_id);
+              });
+            };
+          } else {
+            twitter.dm(data.direct_message.sender.id_str, logger.timestamp() + " No record found matching " + item_id);
+          }
+        });
+      };
+    };
     var dm_data = {
       message_id: data.direct_message.id_str,
       message_type: "DM",
@@ -296,10 +329,10 @@ userStream.on("error", function (error) {
       twitter.dm(config.twitter.admin_id, logger.timestamp() + errorCodes[errorCode].message);
       reconnectStream(errorCodes[errorCode].reconnectTimeout);        
     } else {
-      logger.log(logger.timestamp() + errorCodes.default.message);
+      logger.log(logger.timestamp() + errorCodes["default"].message);
       logger.log(util.inspect(error, {depth:null}));
-      twitter.dm(config.twitter.admin_id, logger.timestamp() + errorCodes.default.message + errorCode);
-      reconnectStream(errorCodes.default.reconnectTimeout);        
+      twitter.dm(config.twitter.admin_id, logger.timestamp() + errorCodes["default"].message + errorCode);
+      reconnectStream(errorCodes["default"].reconnectTimeout);
     }
   }
 

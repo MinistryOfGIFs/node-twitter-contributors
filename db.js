@@ -14,11 +14,11 @@ function db(config) {
   var table_name = config.twitter.screen_name + "_db",
       database = new dblite('./' + config.twitter.screen_name + '.db');
 
-  createQuery = util.format("CREATE TABLE IF NOT EXISTS %s (ROWID INTEGER PRIMARY KEY, message_id TEXT, user_id TEXT, screen_name TEXT, message_text TEXT, url TEXT, tumblr_id TEXT, tweet_id TEXT, favs INTEGER, retweets INTEGER, queued_at INTEGER, posted_at INTEGER, queue_state INTEGER)", table_name);
-  database.query(createQuery);
+  // createQuery = util.format("CREATE TABLE IF NOT EXISTS %s (ROWID INTEGER PRIMARY KEY, message_id TEXT, user_id TEXT, screen_name TEXT, message_text TEXT, url TEXT, tumblr_id TEXT, tweet_id TEXT, favs INTEGER, last_alert INTEGER, retweets INTEGER, queued_at INTEGER, posted_at INTEGER, queue_state INTEGER)", table_name);
+  // database.query(createQuery);
 
   database.on('close', function (code) {
-    // Without this, it logs "Bye bye" every time it closes the db.
+    // Without this, it logs "Bye bye" every time it closes the db, which is dumb.
     // console.log("Closing: " + code);
   });
 
@@ -32,6 +32,7 @@ function db(config) {
     tumblr_id: String,
     tweet_id: String,
     favs: Number,
+    last_alert: Number,
     retweets: Number,
     queued_at: Number,
     posted_at: Number,
@@ -39,7 +40,7 @@ function db(config) {
   };
 
   this.get = function(column, value, cb){
-    query = util.format("SELECT * FROM %s WHERE %s = %s", table_name, column, value);
+    query = util.format("SELECT rowid, message_id, user_id, screen_name, message_text, url, tumblr_id, tweet_id, favs, last_alert, retweets, queued_at, posted_at, queue_state FROM %s WHERE %s = %s", table_name, column, value);
     database.query(query, responseTemplate, function(err, res){
       if(typeof cb === "function"){
         cb(res);
@@ -47,7 +48,7 @@ function db(config) {
     });
   },
   this.insert = function(values, cb){
-    query = util.format("INSERT INTO %s VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? ,?)", table_name);
+    query = util.format("INSERT INTO %s VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? ,?, ?)", table_name);
     database.query(query, values, function(err, res){
       database.lastRowID(table_name, function(rowid){
         if(typeof cb === "function"){
@@ -75,6 +76,13 @@ function db(config) {
   },
   this.getLastPosted = function(cb){
     query = util.format("SELECT * FROM %s WHERE queue_state = 1 ORDER BY posted_at DESC LIMIT 1", table_name);
+    database.query(query, responseTemplate, function(err, res){
+      if(typeof cb === "function"){
+        cb(res);
+      };
+    });
+  },
+  this.query = function(query, cb){
     database.query(query, responseTemplate, function(err, res){
       if(typeof cb === "function"){
         cb(res);
