@@ -46,8 +46,7 @@ function expandURLs (urls, cb) {
 }
 
 function heartbeatTimer(timeout) {
-  if ( reconnecting === 1 ) { return }
-  timeout = timeout || 0;
+  timeout = timeout || 120;
   heartbeat_timer = setInterval(function () {
     if (timeout > 1) {
       timeout--;
@@ -120,8 +119,6 @@ function initStream() {
   twitter.verify(function (data) {
     if (data.id_str) {
       userStream.stream();
-      reconnecting = 0;
-      heartbeatTimer(120);
     } else if (data.statusCode) {
       logger.log(logger.timestamp() + " Connection error: " + data.statusCode + ": " + data.message);
       var errorCode = data.statusCode;
@@ -146,6 +143,7 @@ function initStream() {
 
 function reconnectStream(timeout) {
   // Kill current connection and reconnect
+  if ( reconnecting == 1 ) { return }
   timeout = timeout || 120;
   reconnecting = 1;
   userStream.destroy();
@@ -228,6 +226,8 @@ initStream();
 
 // userStream listeners
 userStream.on("connected", function (data) {
+  reconnecting = 0;
+  heartbeatTimer(120);
   logger.log(logger.timestamp() + " Connected to @" + config.twitter.screen_name + ".");
   // twitter.dm(config.twitter.admin_id, logger.timestamp() + " Connected to @" + config.twitter.screen_name + ".");
   processQueue();
@@ -337,6 +337,7 @@ userStream.on("error", function (error) {
   }
 
   if (error.type && error.type === 'request') {
+    reconnecting = 1;
     twitter.dm(config.twitter.admin_id, logger.timestamp() + " SOCKET ERROR: Reconnecting in 4 minutes.");
     reconnectStream(480);
   }
