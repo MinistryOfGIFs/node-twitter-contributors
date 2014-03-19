@@ -7,7 +7,8 @@
       "consumer_key": "xxx",
       "consumer_secret": "xxx",
       "oauth_token": "xxx",
-      "oauth_secret": "xxx"
+      "oauth_secret": "xxx",
+      "tweet_rate": 30
     },
     "tumblr": {
       "blog_name": "blog",
@@ -26,7 +27,8 @@
       "consumer_key": "xxx",
       "consumer_secret": "xxx",
       "oauth_token": "xxx",
-      "oauth_secret": "xxx"
+      "oauth_secret": "xxx",
+      "tweet_rate": 30
     },
     "tumblr": {
       "blog_name": "blog-test",

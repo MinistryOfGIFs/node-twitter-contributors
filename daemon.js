@@ -9,9 +9,9 @@ var util             = require("util"),
     request          = require('request'),
     Stream           = require("user-stream"),
     friends          = [], // Users this account follows, populated when the 'friends' event is emitted on connection
-    show_heartbeat   = true, // logs '--^v--' to stdout only
+    show_heartbeat   = false, // logs '--^v--' to stdout only
     heartbeat_timer  = null,
-    tweet_rate       = 30, // Minutes between Tweets
+    tweet_rate       = 20, // Minutes between Tweets
     queue_timer      = {},
     processing_queue = 0,
     reconnecting     = 0;
@@ -46,7 +46,7 @@ function expandURLs (urls, cb) {
 }
 
 function heartbeatTimer(timeout) {
-  timeout = timeout || 120;
+  var timeout = timeout || 120;
   heartbeat_timer = setInterval(function () {
     if (timeout > 1) {
       timeout--;
@@ -62,14 +62,22 @@ function heartbeatTimer(timeout) {
 
 function postFromQueue(){
   db.getOldest(function(results){
-    url_info = results[0];
-    tumblr.post(url_info.url, function(err, post_data){
-      var post_url = "http://" + config.tumblr.blog_url + "/post/" + post_data.id;
+    var url_info = results[0];
+    var post_url = "";
+    if (!url_info.tumblr_id){
+      tumblr.post(url_info.url, function(err, post_data){
+        post_url = "http://" + config.tumblr.blog_url + "/post/" + post_data.id;
+        var updateVals = {
+          "tumblr_id": post_data.id,
+        };
+        db.update(updateVals, url_info.record_id);
+      });
+    };
+    if (!url_info.tweet_id){
       twitter.tweet(url_info.url, function(tweet_id, tweet_text){
-        updateVals = {
+        var updateVals = {
           "queue_state": 1,
           "posted_at": logger.epochTimestamp(),
-          "tumblr_id": post_data.id,
           "tweet_id": tweet_id
         };
         db.update(updateVals, url_info.record_id);
@@ -77,7 +85,7 @@ function postFromQueue(){
         logger.log(msg);
         twitter.dm(url_info.user_id, msg);
       });
-    });
+    };
   });
 }
 
@@ -107,7 +115,7 @@ var userStream = new Stream({
 });
 
 var errorCodes = {
-  "403": { message: " ERROR 403: Forbidden", reconnectTimeout: 240 },
+  "403": { message: " ERROR 403: Forbidden", reconnectTimeout: 480 },
   "420": { message: " ERROR 420: Enhance Your Calm", reconnectTimeout: 600 },
   "429": { message: " ERROR 429: Too Many Requests", reconnectTimeout: 900 },
   "503": { message: " ERROR 503: Service Unavailable", reconnectTimeout: 240 },
@@ -144,7 +152,7 @@ function initStream() {
 function reconnectStream(timeout) {
   // Kill current connection and reconnect
   if ( reconnecting == 1 ) { return }
-  timeout = timeout || 120;
+  var timeout = timeout || 120;
   reconnecting = 1;
   userStream.destroy();
   setTimeout(function () {
@@ -190,7 +198,7 @@ function handleEvent(event, data) {
   } else if (event === 'unfavorite') {
     db.get("tweet_id", data.target_object.id_str, function(result){
       if(result.length > 0){
-        updateVals = {"favs": "favs-1"};
+        var updateVals = {"favs": "favs-1"};
         db.update(updateVals, result[0].record_id);
         logger.log(logger.timestamp() + " @" + data.source.screen_name + " unfaved " + data.target_object.id_str);
       }
@@ -251,7 +259,7 @@ userStream.on("data", function (data) {
       users.push(user_mentions[i].id_str);
     }
     if (users.length === 1 && users.indexOf(config.twitter.user_id) > -1) {
-      var tweet_url = (data.entities.urls[0] = undefined ? data.entities.urls[0].expanded_url : data.text)
+      var tweet_url = (data.entities.urls[0] == undefined ? data.entities.urls[0].expanded_url : data.text)
       var tweet_data = {
         message_id: data.id_str,
         message_type: "Tweet",
@@ -264,42 +272,40 @@ userStream.on("data", function (data) {
     }
   }
   if (data.direct_message && friends.indexOf(data.direct_message.sender.id_str) > -1) {
-    if (data.direct_message.sender.id_str === config.twitter.admin_id) {
-      var message = data.direct_message.text;
-      var delete_command = /[dD]elete+ \d+/;
-      if (message === "queue") {
-        db.get("queue_state", 0, function(tweet_queue){
-          twitter.dm(data.direct_message.sender.id_str, logger.timestamp() + " " + (tweet_queue.length || 0) + " links queued");
-        });
-      };
-      if(message.match(delete_command)){
-        var item_pattern = /\d+/;
-        var item_id = message.match(item_pattern)[0];
-        var type = (item_id.length > 10 ? "tweet_id" : "rowid");
-        db.get(type, item_id, function(res){
-          if (res[0].user_id !== data.direct_message.sender.id_str){
-            twitter.dm(data.direct_message.sender.id_str, logger.timestamp() + " You're not authorized to delete " + item_id);
-            return;
-          }
-          if (res.length > 0) {
-            var record = res[0];
-            if (record.queue_state === 0) {
-              updateVals = { "queue_state": 2 };
-              db.update(updateVals, record.record_id);
-              logger.log(logger.timestamp() + " Removed " + item_id + " from queue");
-              twitter.dm(data.direct_message.sender.id_str, logger.timestamp() + " Removed " + item_id + " from queue");
-            };
-            if (record.queue_state === 1) {
-              twitter.delete(record.tweet_id, function(res){
-                logger.log(logger.timestamp() + " Deleted Tweet " + record.tweet_id);
-                twitter.dm(data.direct_message.sender.id_str, logger.timestamp() + " Deleted Tweet " + record.tweet_id);
-              });
-            };
-          } else {
-            twitter.dm(data.direct_message.sender.id_str, logger.timestamp() + " No record found matching " + item_id);
-          }
-        });
-      };
+    var message = data.direct_message.text;
+    var delete_command = /[dD]elete+ \d+/;
+    if (message === "queue") {
+      db.get("queue_state", 0, function(tweet_queue){
+        twitter.dm(data.direct_message.sender.id_str, logger.timestamp() + " " + (tweet_queue.length || 0) + " links queued");
+      });
+    };
+    if(message.match(delete_command)){
+      var item_pattern = /\d+/;
+      var item_id = message.match(item_pattern)[0];
+      var type = (item_id.length > 10 ? "tweet_id" : "rowid");
+      db.get(type, item_id, function(res){
+        if (res[0].user_id !== data.direct_message.sender.id_str){
+          twitter.dm(data.direct_message.sender.id_str, logger.timestamp() + " You're not authorized to delete " + item_id);
+          return;
+        };
+        if (res[0].user_id == data.direct_message.sender.id_str && res.length > 0) {
+          var record = res[0];
+          if (record.queue_state === 0) {
+            var updateVals = { "queue_state": 2 };
+            db.update(updateVals, record.record_id);
+            logger.log(logger.timestamp() + " Removed " + item_id + " from queue");
+            twitter.dm(data.direct_message.sender.id_str, logger.timestamp() + " Removed " + item_id + " from queue");
+          };
+          if (record.queue_state === 1) {
+            twitter.delete(record.tweet_id, function(res){
+              logger.log(logger.timestamp() + " Deleted Tweet " + record.tweet_id);
+              twitter.dm(data.direct_message.sender.id_str, logger.timestamp() + " Deleted Tweet " + record.tweet_id);
+            });
+          };
+        } else {
+          twitter.dm(data.direct_message.sender.id_str, logger.timestamp() + " No record found matching " + item_id);
+        }
+      });
     };
     var dm_data = {
       message_id: data.direct_message.id_str,
@@ -361,6 +367,6 @@ userStream.on("heartbeat", function () {
 
 userStream.on("garbage", function (data) {
   logger.log(logger.timestamp() + " Can't be formatted:");
-  // logger.log(data);
+  logger.log(data);
   // console.log(JSON.parse(data));
 });
