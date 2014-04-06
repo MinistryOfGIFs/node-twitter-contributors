@@ -11,8 +11,8 @@ function tumblr_actions(config){
   this.post = function(url, cb){
   	tumblr.post('/post', {
 	    type: 'text',
-	    title: "#", // I don't like the permalink format, this negates them
-	    body: "<a href=\"" + url + "\" target=\"_blank\"><img src=\"" + url + "\" class=\"inline-tweet-media\"/></a><br/><a href=\"" + url + "\">Source</a>"
+	    title: "#", // The default permalink/title format tries to use the posted URL...
+	    body: "<a href=\"" + url + "\" target=\"_blank\"><img src=\"" + url + "\" class=\"inline-tweet-media\"/></a><br/><a href=\"" + url + "\">Source</a>" // TODO: Improve this templating
 	  }, function(err, post_data){
 	  	cb(err, post_data);
 	  });
