@@ -63,6 +63,14 @@ config.json
   }
 }
 ```
+
+#### Required packages ####
+[dblite](https://github.com/WebReflection/dblite) - SQLite database integration
+[twitter](https://github.com/desmondmorris/node-twitter) - Twitter REST & Streaming API
+[user-stream](https://github.com/aivis/user-stream) - Twitter Streaming API
+[tumblrwks](https://github.com/arkxu/tumblrwks) - Tumblr REST API
+[request](https://github.com/mikeal/request) - Various HTTP handlers
+
 **TODO:**
 
 * Track retweet counts
