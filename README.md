@@ -1,4 +1,4 @@
-### @GIFs contributor daemon ###
+### Node Twitter contributor daemon ###
 
 This is a Node.js daemon to allow multiple users to post link to one Twitter account and Tumblr blog. It also tracks favs and provides feedback to contributors when their links get engagement.
 
