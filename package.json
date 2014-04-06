@@ -20,7 +20,7 @@
     "dblite": "0.4.1",
     "request": "2.27.0",
     "user-stream": "0.0.7",
-    "twitter": "0.2.3",
+    "twitter": "0.2.9",
     "tumblrwks": "0.2.0"
   }
 }

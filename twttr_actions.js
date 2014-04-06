@@ -27,6 +27,7 @@ function twttr_actions(config){
 	      if (data.id_str) {
 	        callback(data.id_str, data.text);
 	      } else if (data.statusCode) {
+          console.log(util.inspect(data, {depth:null}));
 	      	logger.log(logger.timestamp() + " Tweet error: " + data.statusCode + ": " + data.message);
 	    	}
 	    }
@@ -38,6 +39,7 @@ function twttr_actions(config){
 	      if (data.id_str) {
 	        callback(data.id_str, data.text);
 	      } else if (data.statusCode) {
+          console.log(util.inspect(data, {depth:null}));
 	      	logger.log(logger.timestamp() + " Tweet delete error: " + data.statusCode + ": " + data.message);
 	    	}
 	    }

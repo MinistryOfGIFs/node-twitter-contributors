@@ -187,7 +187,7 @@ function handleEvent(event, data) {
         db.update(updateVals, result[0].record_id);
         logger.log(logger.timestamp() + " @" + data.source.screen_name + " faved " + data.target_object.id_str);
         var fav_count = (result[0].favs+1);
-        if((fav_count % 10 == 0) && (fav_count != result[0].last_alert)){
+        if((fav_count % 5 == 0) && (fav_count != result[0].last_alert)){
           var msg = logger.timestamp() + " Your post recieved " + fav_count + " favs: https://twitter.com/" + config.twitter.screen_name + "/status/" + result[0].tweet_id;
           twitter.dm(result[0].user_id, msg);
           var updateVals = {"last_alert": fav_count};
@@ -259,7 +259,7 @@ userStream.on("data", function (data) {
       users.push(user_mentions[i].id_str);
     }
     if (users.length === 1 && users.indexOf(config.twitter.user_id) > -1) {
-      var tweet_url = (data.entities.urls[0] == undefined ? data.entities.urls[0].expanded_url : data.text)
+      var tweet_url = (data.entities.urls[0] != undefined ? data.entities.urls[0].expanded_url : data.text)
       var tweet_data = {
         message_id: data.id_str,
         message_type: "Tweet",
