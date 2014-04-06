@@ -8,9 +8,7 @@ While @GIFs is currently running on a Raspberry Pi, you may run this in any Node
 
 Install and configure [Node](http://nodejs.org/) and [NPM](https://www.npmjs.org/)
 
-Create [Twitter API keys](https://apps.twitter.com/) and add them to config.json
-
-Create [Tumblr API keys](http://www.tumblr.com/oauth/apps) and add them to config.json
+Create [Twitter API keys](https://apps.twitter.com/) and [Tumblr API keys](http://www.tumblr.com/oauth/apps) and add them to config.json
 
 #### Additional Configuration ####
 
