@@ -1,3 +1,4 @@
+var util = require("util"),
 twitter = require("twitter"),
 loggr  = require('./logger.js');
 
@@ -18,6 +19,8 @@ function twttr_actions(config){
 	      logger.log(logger.timestamp() + " DM sent to @" + data.recipient.screen_name + ": " + data.text);
 	    } else if (data.statusCode) {
 	      logger.log(logger.timestamp() + " DM error: " + data.statusCode + ": " + data.message);
+          logger.log(util.inspect(data, {depth:null}));
+          logger.log(JSON.parse(data.data));
 	    }
 	  })
 	},
@@ -25,11 +28,12 @@ function twttr_actions(config){
 	  twttr.updateStatus(status,
 	    function (data) {
 	      if (data.id_str) {
-	        callback(data.id_str, data.text);
+	        callback(data, null);
 	      } else if (data.statusCode) {
-          console.log(util.inspect(data, {depth:null}));
 	      	logger.log(logger.timestamp() + " Tweet error: " + data.statusCode + ": " + data.message);
-	    	}
+            logger.log(util.inspect(data, {depth:null}));
+            callback(null, JSON.parse(data.data).errors);
+          }
 	    }
 	  )
 	},
@@ -39,9 +43,10 @@ function twttr_actions(config){
 	      if (data.id_str) {
 	        callback(data.id_str, data.text);
 	      } else if (data.statusCode) {
-          console.log(util.inspect(data, {depth:null}));
 	      	logger.log(logger.timestamp() + " Tweet delete error: " + data.statusCode + ": " + data.message);
-	    	}
+            logger.log(util.inspect(data, {depth:null}));
+            logger.log(JSON.parse(data.data));
+          }
 	    }
 	  )
 	},
