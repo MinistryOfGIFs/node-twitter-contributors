@@ -93,8 +93,9 @@ function db(config) {
     database.close();
   };
 
-  // query = util.format("SELECT * FROM gifs_db");
-  // database.query(query, responseTemplate, function(err, res){
+  // Show queue content on load
+  // query = util.format("SELECT rowid, screen_name, url FROM gifs_db where queue_state = 0");
+  // database.query(query, function(err, res){
   //   console.log(res);
   // });
 
