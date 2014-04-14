@@ -85,11 +85,9 @@ function postFromQueue(){
               };
           db.update(updateVals, url_info.record_id);
           var msg = logger.timestamp() + " Posted (" + url_info.record_id + "):\nhttps://twitter.com/" + config.twitter.screen_name + "/status/" + tweet_id + "\n" + post_url;
-          logger.log(msg);
           twitter.dm(url_info.user_id, msg);
+          logger.log(msg);
         } else if (error && error.length > 0){
-          console.log("OMG TWEET ERROR");
-          console.log(error[0]);
           if (error[0].code == 187){
             var updateVals = {
               "queue_state": 3,
@@ -97,8 +95,8 @@ function postFromQueue(){
             };
             db.update(updateVals, url_info.record_id);
             var msg = logger.timestamp() + " Duplicate URL: " + url_info.url;
-            logger.log(msg);
             twitter.dm(url_info.user_id, msg);
+            logger.log(msg);
           };
         }
       });
