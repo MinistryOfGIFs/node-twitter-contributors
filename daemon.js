@@ -74,16 +74,33 @@ function postFromQueue(){
       });
     };
     if (!url_info.tweet_id){
-      twitter.tweet(url_info.url, function(tweet_id, tweet_text){
-        var updateVals = {
-          "queue_state": 1,
-          "posted_at": logger.epochTimestamp(),
-          "tweet_id": tweet_id
-        };
-        db.update(updateVals, url_info.record_id);
-        var msg = logger.timestamp() + " Posted (" + url_info.record_id + "):\nhttps://twitter.com/" + config.twitter.screen_name + "/status/" + tweet_id + "\n" + post_url;
-        logger.log(msg);
-        twitter.dm(url_info.user_id, msg);
+      twitter.tweet(url_info.url, function(data, error){
+        if (data){
+          var tweet_id = data.id_str,
+              tweet_text = data.text
+              updateVals = {
+                "queue_state": 1,
+                "posted_at": logger.epochTimestamp(),
+                "tweet_id": tweet_id
+              };
+          db.update(updateVals, url_info.record_id);
+          var msg = logger.timestamp() + " Posted (" + url_info.record_id + "):\nhttps://twitter.com/" + config.twitter.screen_name + "/status/" + tweet_id + "\n" + post_url;
+          logger.log(msg);
+          twitter.dm(url_info.user_id, msg);
+        } else if (error && error.length > 0){
+          console.log("OMG TWEET ERROR");
+          console.log(error[0]);
+          if (error[0].code == 187){
+            var updateVals = {
+              "queue_state": 3,
+              "posted_at": logger.epochTimestamp(),
+            };
+            db.update(updateVals, url_info.record_id);
+            var msg = logger.timestamp() + " Duplicate URL: " + url_info.url;
+            logger.log(msg);
+            twitter.dm(url_info.user_id, msg);
+          };
+        }
       });
     };
   });
@@ -284,11 +301,15 @@ userStream.on("data", function (data) {
       var item_id = message.match(item_pattern)[0];
       var type = (item_id.length > 10 ? "tweet_id" : "rowid");
       db.get(type, item_id, function(res){
-        if (res[0].user_id !== data.direct_message.sender.id_str){
+        if (res.length == 0){
+          twitter.dm(data.direct_message.sender.id_str, logger.timestamp() + " No record found matching " + item_id);
+          return;
+        }
+        if ([res[0].user_id, config.twitter.admin_id].indexOf(data.direct_message.sender.id_str) == -1){
           twitter.dm(data.direct_message.sender.id_str, logger.timestamp() + " You're not authorized to delete " + item_id);
           return;
         };
-        if (res[0].user_id == data.direct_message.sender.id_str && res.length > 0) {
+        if ([res[0].user_id, config.twitter.admin_id].indexOf(data.direct_message.sender.id_str) > -1) {
           var record = res[0];
           if (record.queue_state === 0) {
             var updateVals = { "queue_state": 2 };
@@ -344,7 +365,7 @@ userStream.on("error", function (error) {
 
   if (error.type && error.type === 'request') {
     reconnecting = 1;
-    twitter.dm(config.twitter.admin_id, logger.timestamp() + " SOCKET ERROR: Reconnecting in 4 minutes.");
+    twitter.dm(config.twitter.admin_id, logger.timestamp() + " SOCKET ERROR: Reconnecting in 8 minutes.");
     reconnectStream(480);
   }
 
@@ -366,7 +387,7 @@ userStream.on("heartbeat", function () {
 });
 
 userStream.on("garbage", function (data) {
-  logger.log(logger.timestamp() + " Can't be formatted:");
-  logger.log(data);
-  // console.log(JSON.parse(data));
+  logger.log(logger.timestamp() + " Can't be formatted");
+  // logger.log(data);
+  // // console.log(JSON.parse(data));
 });
