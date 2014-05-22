@@ -291,7 +291,7 @@ userStream.on("data", function (data) {
     }
   }
   // Retweets
-  if (data.entities && !data.in_reply_to_status_id_str && data.retweeted_status) {
+  if (data.retweeted_status) {
     db.get("tweet_id", data.retweeted_status.id_str, function(result){
       if(result.length > 0 ){
         var updateVals = {"retweets": "retweets+1"};
