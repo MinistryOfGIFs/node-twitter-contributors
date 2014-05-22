@@ -257,16 +257,20 @@ userStream.on("connected", function (data) {
 });
 
 userStream.on("data", function (data) {
+  // Incoming warnings
   if (data.warning) {
     logger.log(logger.timestamp() + " WARNING");
     twitter.dm(config.twitter.admin_id, logger.timestamp() + " WARNING: [" + data.code + "] " + data.message);
   }
+  // Following list
   if (data.friends) {
     friends = data.friends.map(String); // TODO: Update this for 64bit user IDs
   }
+  // Incoming events
   if (data.event) {
     handleEvent(data.event, data);
   }
+  // Incoming Tweets
   if (data.entities && !data.in_reply_to_status_id_str && !data.retweeted_status && friends.indexOf(data.user.id_str) > -1) {
     var user_mentions = data.entities.user_mentions,
         users = [];
@@ -286,6 +290,23 @@ userStream.on("data", function (data) {
       parseMessage(tweet_data);
     }
   }
+  // Retweets
+  if (data.entities && !data.in_reply_to_status_id_str && data.retweeted_status) {
+    db.get("tweet_id", data.retweeted_status.id_str, function(result){
+      if(result.length > 0 ){
+        var updateVals = {"retweets": "retweets+1"};
+        db.update(updateVals, result[0].record_id);
+        logger.log(logger.timestamp() + " @" + data.user.screen_name + " retweeted " + data.retweeted_status.id_str);
+        var retweet_count = (result[0].retweets+1);
+        if(retweet_count % 5 == 0){
+          var msg = logger.timestamp() + " Your post received " + retweet_count + " retweets: https://twitter.com/" + config.twitter.screen_name + "/status/" + result[0].tweet_id;
+          twitter.dm(result[0].user_id, msg);
+          db.update(updateVals, result[0].record_id);
+        }
+      }
+    });
+  }
+  // DMs
   if (data.direct_message && friends.indexOf(data.direct_message.sender.id_str) > -1) {
     var message = data.direct_message.text;
     var delete_command = /[dD]elete+ \d+/;
